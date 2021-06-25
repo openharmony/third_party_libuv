@@ -149,7 +149,6 @@ ohos_source_set("libuv_source") {
     ]
   } else if (is_ohos || is_aosp) {
     sources += nonwin_srcs + [
-                 "src/unix/android-ifaddrs.c",
                  "src/unix/linux-core.c",
                  "src/unix/linux-inotify.c",
                  "src/unix/linux-syscalls.c",
