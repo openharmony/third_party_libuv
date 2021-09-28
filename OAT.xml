@@ -66,6 +66,9 @@ Note:If the text contains special characters, please escape them according to th
                 <filteritem type="filepath" name="LICENSE-docs" desc="不使用的文件，且MIT协议，不影响兼容性"/>
                 <filteritem type="filepath" name="docs/src/sphinx-plugins/manpage.py" desc="不使用的文件，且MIT协议，不影响兼容性"/>
                 <filteritem type="filepath" name="tools/vswhere_usability_wrapper.cmd" desc="不使用的文件，且MIT协议，不影响兼容性"/>
+                <filteritem type="filepath" name="docs/src/tcp.rst" desc="资料文件，不影响兼容性"/>
+                <filteritem type="filepath" name="include/uv/stdint-msvc2008.h" desc="不使用的文件，且ISC协议，不影响兼容性"/>
+                <filteritem type="filepath" name="src/inet.c" desc="不使用的文件，且ISC协议，不影响兼容性"/>
             </filefilter>
         </filefilterlist>
 
