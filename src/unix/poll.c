@@ -65,6 +65,23 @@ static void uv__poll_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 }
 
 
+int uv_poll_init_with_block_socket(uv_loop_t* loop, uv_poll_t* handle, int fd) {
+  int err;
+
+  if (uv__fd_exists(loop, fd))
+    return UV_EEXIST;
+
+  err = uv__io_check_fd(loop, fd);
+  if (err)
+    return err;
+
+  uv__handle_init(loop, (uv_handle_t*) handle, UV_POLL);
+  uv__io_init(&handle->io_watcher, uv__poll_io, fd);
+  handle->poll_cb = NULL;
+  return 0;
+}
+
+
 int uv_poll_init(uv_loop_t* loop, uv_poll_t* handle, int fd) {
   int err;
 
