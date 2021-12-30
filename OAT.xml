@@ -60,14 +60,44 @@ Note:If the text contains special characters, please escape them according to th
         <policylist>
             <policy name="projectPolicy" desc="">
             </policy>
+            <policyitem type="compatibility" name="ISC License" path="src/inet.c" desc="ISC License，BSD-style，不影响兼容性"/>
+            <policyitem type="compatibility" name="ISC License" path="include/uv/stdint-msvc2008.h" desc="ISC License，BSD-style，不影响兼容性"/>
         </policylist>
         <filefilterlist>
             <filefilter name="defaultPolicyFilter" desc="compatibility，license文件头校验策略的过滤条件" >
                 <filteritem type="filepath" name="LICENSE-docs" desc="不使用的文件，且MIT协议，不影响兼容性"/>
                 <filteritem type="filepath" name="docs/src/sphinx-plugins/manpage.py" desc="不使用的文件，且MIT协议，不影响兼容性"/>
+                <filteritem type="filepath" name="docs/src/tcp.rst" desc="不参与编译，不影响兼容性"/>
                 <filteritem type="filepath" name="tools/vswhere_usability_wrapper.cmd" desc="不使用的文件，且MIT协议，不影响兼容性"/>
             </filefilter>
         </filefilterlist>
+        <licensematcherlist>
+            <licensematcher name="ISC License" desc="如果工具扫描是InvalidLicense，可在此定义匹配规则，注意引号要转义" >
+                <licensetext name="
+                    Copyright (c) 2004 by Internet Systems Consortium, Inc. (&quot;ISC&quot;)
+                    Copyright (c) 1996,1999 by Internet Software Consortium.
 
+                    Permission to use, copy, modify, and distribute this software for any
+                    purpose with or without fee is hereby granted, provided that the above
+                    copyright notice and this permission notice appear in all copies.
+                " desc=""/>
+            </licensematcher>
+            <licensematcher name="ISC License" desc="如果工具扫描是InvalidLicense，可在此定义匹配规则，注意引号要转义" >
+                <licensetext name="
+                    Redistribution and use in source and binary forms, with or without
+                    modification, are permitted provided that the following conditions are met:
+
+                      1. Redistributions of source code must retain the above copyright notice,
+                         this list of conditions and the following disclaimer.
+
+                      2. Redistributions in binary form must reproduce the above copyright
+                         notice, this list of conditions and the following disclaimer in the
+                         documentation and/or other materials provided with the distribution.
+
+                      3. The name of the author may be used to endorse or promote products
+                         derived from this software without specific prior written permission.
+                " desc=""/>
+            </licensematcher>
+        </licensematcherlist>
     </oatconfig>
 </configuration>
