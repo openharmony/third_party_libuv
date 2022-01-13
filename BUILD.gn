@@ -290,3 +290,14 @@ if (defined(ohos_lite)) {
     public_configs = [ ":libuv_config" ]
   }
 }
+
+ohos_ndk_library("libuv_ndk") {
+  ndk_description_file = "./libuv.ndk.json"
+  min_compact_version = "1"
+  output_name = "uv"
+}
+
+ohos_ndk_headers("libuv_header") {
+  dest_dir = "$ndk_headers_out_dir/libuv"
+  sources = [ "./include/uv.h" ]
+}
