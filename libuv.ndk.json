@@ -1,5 +1,5 @@
 [
-    {"name": "uv_version"},
+    {"name":"uv_version"},
     {"name":"uv_version_string"},
     {"name":"uv_replace_allocator"},
     {"name":"uv_default_loop"},
