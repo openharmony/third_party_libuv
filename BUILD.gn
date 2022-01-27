@@ -246,7 +246,7 @@ if (defined(ohos_lite)) {
         "src/win/winapi.c",
         "src/win/winsock.c",
       ]
-    } else if (is_ohos) {
+    } else if (is_ohos || (defined(is_android) && is_android)) {
       sources += nonwin_srcs + [
                    "src/unix/linux-core.c",
                    "src/unix/linux-inotify.c",
