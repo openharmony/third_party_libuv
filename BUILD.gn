@@ -288,6 +288,8 @@ if (defined(ohos_lite)) {
   ohos_shared_library("uv") {
     deps = [ ":libuv_source" ]
     public_configs = [ ":libuv_config" ]
+    subsystem_name = "ace"
+    part_name = "napi"
   }
 }
 
@@ -299,5 +301,26 @@ ohos_ndk_library("libuv_ndk") {
 
 ohos_ndk_headers("libuv_header") {
   dest_dir = "$ndk_headers_out_dir/libuv"
-  sources = [ "./include/uv.h" ]
+  sources = [ "include/uv.h" ]
+}
+
+ohos_ndk_headers("libuv_uv_header") {
+  dest_dir = "$ndk_headers_out_dir/libuv/uv"
+  sources = [
+    "include/uv/aix.h",
+    "include/uv/android-ifaddrs.h",
+    "include/uv/bsd.h",
+    "include/uv/darwin.h",
+    "include/uv/errno.h",
+    "include/uv/linux.h",
+    "include/uv/os390.h",
+    "include/uv/posix.h",
+    "include/uv/stdint-msvc2008.h",
+    "include/uv/sunos.h",
+    "include/uv/threadpool.h",
+    "include/uv/tree.h",
+    "include/uv/unix.h",
+    "include/uv/version.h",
+    "include/uv/win.h",
+  ]
 }
