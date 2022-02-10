@@ -290,6 +290,9 @@ if (defined(ohos_lite)) {
     public_configs = [ ":libuv_config" ]
     subsystem_name = "ace"
     part_name = "napi"
+    if (is_ohos) {
+      output_extension = "so"
+    }
   }
 }
 
@@ -297,15 +300,16 @@ ohos_ndk_library("libuv_ndk") {
   ndk_description_file = "./libuv.ndk.json"
   min_compact_version = "1"
   output_name = "uv"
+  output_extension = "so"
 }
 
 ohos_ndk_headers("libuv_header") {
-  dest_dir = "$ndk_headers_out_dir/libuv"
+  dest_dir = "$ndk_headers_out_dir"
   sources = [ "include/uv.h" ]
 }
 
 ohos_ndk_headers("libuv_uv_header") {
-  dest_dir = "$ndk_headers_out_dir/libuv/uv"
+  dest_dir = "$ndk_headers_out_dir/uv"
   sources = [
     "include/uv/aix.h",
     "include/uv/android-ifaddrs.h",
