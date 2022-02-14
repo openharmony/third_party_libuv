@@ -789,8 +789,6 @@ enum uv_poll_event {
   UV_PRIORITIZED = 8
 };
 
-// User defined interface, to poll a block socket
-UV_EXTERN int uv_poll_init_with_block_socket(uv_loop_t* loop, uv_poll_t* handle, int fd);
 UV_EXTERN int uv_poll_init(uv_loop_t* loop, uv_poll_t* handle, int fd);
 UV_EXTERN int uv_poll_init_socket(uv_loop_t* loop,
                                   uv_poll_t* handle,
