@@ -209,7 +209,7 @@ if (defined(ohos_lite)) {
     configs = [ ":libuv_config" ]
     sources = common_source
 
-    if (is_mac && (defined(is_ios) && is_ios)) {
+    if (is_mac || (defined(is_ios) && is_ios)) {
       sources += nonwin_srcs + [
                    "src/unix/bsd-ifaddrs.c",
                    "src/unix/kqueue.c",
