@@ -288,7 +288,7 @@ if (defined(ohos_lite)) {
   ohos_shared_library("uv") {
     deps = [ ":libuv_source" ]
     public_configs = [ ":libuv_config" ]
-    subsystem_name = "ace"
+    subsystem_name = "arkui"
     part_name = "napi"
     if (is_ohos) {
       output_extension = "so"
