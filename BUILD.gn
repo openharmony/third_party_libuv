@@ -279,17 +279,21 @@ if (defined(ohos_lite)) {
                    "src/unix/proctitle.c",
                  ]
     }
+    subsystem_name = [ "thirdparty" ]
+    part_name = [ "libuv" ]
   }
 
   ohos_static_library("uv_static") {
     deps = [ ":libuv_source" ]
     public_configs = [ ":libuv_config" ]
+    subsystem_name = [ "thirdparty" ]
+    part_name = [ "libuv" ]
   }
   ohos_shared_library("uv") {
     deps = [ ":libuv_source" ]
     public_configs = [ ":libuv_config" ]
-    subsystem_name = "arkui"
-    part_name = "napi"
+    subsystem_name = "thirdparty"
+    part_name = "libuv"
     if (is_ohos) {
       output_extension = "so"
     }

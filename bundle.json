@@ -10,8 +10,8 @@
     "dirs": {},
     "scripts": {},
     "component": {
-        "name": "thirdparty_libuv",
-        "subsystem": "",
+        "name": "libuv",
+        "subsystem": "thirdparty",
         "syscap": [],
         "features": [],
         "adapted_system_type": [],
