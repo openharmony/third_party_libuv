@@ -297,6 +297,10 @@ if (defined(ohos_lite)) {
     if (is_ohos) {
       output_extension = "so"
     }
+    install_images = [
+      "system",
+      "updater",
+    ]
   }
 }
 
