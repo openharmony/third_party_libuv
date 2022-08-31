@@ -92,6 +92,7 @@ if (defined(ohos_lite)) {
       "src/unix/async.c",
       "src/unix/core.c",
       "src/unix/dl.c",
+      "src/unix/epoll.c",
       "src/unix/fs.c",
       "src/unix/getaddrinfo.c",
       "src/unix/getnameinfo.c",
@@ -143,6 +144,7 @@ if (defined(ohos_lite)) {
   ]
   if (!is_mingw && !is_win) {
     nonwin_srcs = [
+      "src/unix/epoll.c",
       "src/unix/async.c",
       "src/unix/core.c",
       "src/unix/dl.c",
@@ -242,7 +244,9 @@ if (defined(ohos_lite)) {
                    "src/unix/darwin-proctitle.c",
                    "src/unix/darwin.c",
                    "src/unix/fsevents.c",
+                   "src/unix/os390-proctitle.c",
                  ]
+      sources -= [ "src/unix/epoll.c" ]
     } else if (is_mingw || is_win) {
       sources += [
         "src/win/async.c",
@@ -345,7 +349,6 @@ ohos_ndk_headers("libuv_uv_header") {
   dest_dir = "$ndk_headers_out_dir/uv"
   sources = [
     "include/uv/aix.h",
-    "include/uv/android-ifaddrs.h",
     "include/uv/bsd.h",
     "include/uv/darwin.h",
     "include/uv/errno.h",
