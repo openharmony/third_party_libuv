@@ -89,6 +89,7 @@
     {"name":"uv_udp_recv_stop"},
     {"name":"uv_udp_get_send_queue_size"},
     {"name":"uv_udp_get_send_queue_count"},
+    {"name":"uv__udp_disconnect"},
     {"name":"uv_tty_init"},
     {"name":"uv_tty_set_mode"},
     {"name":"uv_tty_reset_mode"},
