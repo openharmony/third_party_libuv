@@ -25,6 +25,11 @@
 
 
 TEST_IMPL(platform_output) {
+/* TODO(gengjiawen): Fix test on QEMU. */
+#if defined(__QEMU__)
+  RETURN_SKIP("Test does not currently work in QEMU");
+#endif
+
   char buffer[512];
   size_t rss;
   size_t size;
@@ -36,6 +41,7 @@ TEST_IMPL(platform_output) {
   uv_interface_address_t* interfaces;
   uv_passwd_t pwd;
   uv_utsname_t uname;
+  unsigned par;
   int count;
   int i;
   int err;
@@ -82,6 +88,10 @@ TEST_IMPL(platform_output) {
   printf("  page faults: %llu\n", (unsigned long long) rusage.ru_majflt);
   printf("  maximum resident set size: %llu\n",
          (unsigned long long) rusage.ru_maxrss);
+
+  par = uv_available_parallelism();
+  ASSERT_GE(par, 1);
+  printf("uv_available_parallelism: %u\n", par);
 
   err = uv_cpu_info(&cpus, &count);
 #if defined(__CYGWIN__) || defined(__MSYS__)
@@ -150,6 +160,7 @@ TEST_IMPL(platform_output) {
   printf("  username: %s\n", pwd.username);
   printf("  shell: %s\n", pwd.shell);
   printf("  home directory: %s\n", pwd.homedir);
+  uv_os_free_passwd(&pwd);
 
   pid = uv_os_getpid();
   ASSERT(pid > 0);
