@@ -21,7 +21,6 @@
 
 #include "task.h"
 #include "../src/idna.h"
-//#include "../src/idna.c"
 #include <string.h>
 
 TEST_IMPL(utf8_decode1) {
