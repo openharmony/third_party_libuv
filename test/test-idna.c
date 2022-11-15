@@ -21,7 +21,6 @@
 
 #include "task.h"
 #include "../src/idna.h"
-// #include "../src/idna.c"
 #include <string.h>
 
 TEST_IMPL(utf8_decode1) {
@@ -104,13 +103,13 @@ TEST_IMPL(utf8_decode1_overrun) {
   /* Single byte. */
   p = b;
   b[0] = 0x7F;
-  ASSERT_EQ(0x7F, uv__utf8_decode1(&p, b + 1));
+  ASSERT((unsigned int)0x7F == uv__utf8_decode1(&p, b + 1));
   ASSERT_EQ(p, b + 1);
 
   /* Multi-byte. */
   p = b;
   b[0] = 0xC0;
-  ASSERT_EQ((unsigned) -1, uv__utf8_decode1(&p, b + 1));
+  ASSERT_EQ((unsigned int) -1, uv__utf8_decode1(&p, b + 1));
   ASSERT_EQ(p, b + 1);
 
   return 0;
