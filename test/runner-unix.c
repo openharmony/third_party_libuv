@@ -108,13 +108,13 @@ int process_start(char* name, char* part, process_info_t* p, int is_helper) {
   args[n++] = part;
   args[n++] = NULL;
 
-  stdout_file = tmpfile();
-  stdout_fd = fileno(stdout_file);
+  stdout_file = fopen("/data/local/tmp/test.txt", "w+");
+  stdout_fd = fileno(stdout_file);  
   if (!stdout_file) {
     perror("tmpfile");
     return -1;
   }
-
+  
   if (is_helper) {
     if (pipe(pipefd)) {
       perror("pipe");
@@ -142,8 +142,6 @@ int process_start(char* name, char* part, process_info_t* p, int is_helper) {
     /* child */
     if (is_helper)
       closefd(pipefd[0]);
-    dup2(stdout_fd, STDOUT_FILENO);
-    dup2(stdout_fd, STDERR_FILENO);
     execve(args[0], args, environ);
     perror("execve()");
     _exit(127);
