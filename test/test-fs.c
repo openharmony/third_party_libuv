@@ -82,9 +82,6 @@ static int fstat_cb_count;
 static int access_cb_count;
 static int chmod_cb_count;
 static int fchmod_cb_count;
-static int chown_cb_count;
-static int fchown_cb_count;
-static int lchown_cb_count;
 static int link_cb_count;
 static int symlink_cb_count;
 static int readlink_cb_count;
@@ -268,57 +265,6 @@ static void chmod_cb(uv_fs_t* req) {
   check_permission("test_file", *(int*)req->data);
 }
 
-
-static void fchown_cb(uv_fs_t* req) {
-  ASSERT(req->fs_type == UV_FS_FCHOWN);
-  ASSERT(req->result == 0);
-  fchown_cb_count++;
-  uv_fs_req_cleanup(req);
-}
-
-
-static void chown_cb(uv_fs_t* req) {
-  ASSERT(req->fs_type == UV_FS_CHOWN);
-  ASSERT(req->result == 0);
-  chown_cb_count++;
-  uv_fs_req_cleanup(req);
-}
-
-static void lchown_cb(uv_fs_t* req) {
-  ASSERT(req->fs_type == UV_FS_LCHOWN);
-  ASSERT(req->result == 0);
-  lchown_cb_count++;
-  uv_fs_req_cleanup(req);
-}
-
-static void chown_root_cb(uv_fs_t* req) {
-  ASSERT(req->fs_type == UV_FS_CHOWN);
-#if defined(_WIN32) || defined(__MSYS__)
-  /* On windows, chown is a no-op and always succeeds. */
-  ASSERT(req->result == 0);
-#else
-  /* On unix, chown'ing the root directory is not allowed -
-   * unless you're root, of course.
-   */
-  if (geteuid() == 0)
-    ASSERT(req->result == 0);
-  else
-#   if defined(__CYGWIN__)
-    /* On Cygwin, uid 0 is invalid (no root). */
-    ASSERT(req->result == UV_EINVAL);
-#   elif defined(__PASE__)
-    /* On IBMi PASE, there is no root user. uid 0 is user qsecofr.
-     * User may grant qsecofr's privileges, including changing 
-     * the file's ownership to uid 0.
-     */
-    ASSERT(req->result == 0 || req->result == UV_EPERM);
-#   else
-    ASSERT(req->result == UV_EPERM);
-#   endif
-#endif
-  chown_cb_count++;
-  uv_fs_req_cleanup(req);
-}
 
 static void unlink_cb(uv_fs_t* req) {
   ASSERT(req == &unlink_req);
@@ -1830,99 +1776,6 @@ TEST_IMPL(fs_unlink_archive_readonly) {
   return 0;
 }
 #endif
-
-TEST_IMPL(fs_chown) {
-  int r;
-  uv_fs_t req;
-  uv_file file;
-
-  /* Setup. */
-  unlink("test_file");
-  unlink("test_file_link");
-
-  loop = uv_default_loop();
-
-  r = uv_fs_open(NULL, &req, "test_file", O_RDWR | O_CREAT,
-      S_IWUSR | S_IRUSR, NULL);
-  ASSERT(r >= 0);
-  ASSERT(req.result >= 0);
-  file = req.result;
-  uv_fs_req_cleanup(&req);
-
-  /* sync chown */
-  r = uv_fs_chown(NULL, &req, "test_file", -1, -1, NULL);
-  ASSERT(r == 0);
-  ASSERT(req.result == 0);
-  uv_fs_req_cleanup(&req);
-
-  /* sync fchown */
-  r = uv_fs_fchown(NULL, &req, file, -1, -1, NULL);
-  ASSERT(r == 0);
-  ASSERT(req.result == 0);
-  uv_fs_req_cleanup(&req);
-
-  /* async chown */
-  r = uv_fs_chown(loop, &req, "test_file", -1, -1, chown_cb);
-  ASSERT(r == 0);
-  uv_run(loop, UV_RUN_DEFAULT);
-  ASSERT(chown_cb_count == 1);
-
-#ifndef __MVS__
-  /* chown to root (fail) */
-  chown_cb_count = 0;
-  r = uv_fs_chown(loop, &req, "test_file", 0, 0, chown_root_cb);
-  ASSERT(r == 0);
-  uv_run(loop, UV_RUN_DEFAULT);
-  ASSERT(chown_cb_count == 1);
-#endif
-
-  /* async fchown */
-  r = uv_fs_fchown(loop, &req, file, -1, -1, fchown_cb);
-  ASSERT(r == 0);
-  uv_run(loop, UV_RUN_DEFAULT);
-  ASSERT(fchown_cb_count == 1);
-
-#ifndef __HAIKU__
-  /* Haiku doesn't support hardlink */
-  /* sync link */
-  r = uv_fs_link(NULL, &req, "test_file", "test_file_link", NULL);
-  ASSERT(r == 0);
-  ASSERT(req.result == 0);
-  uv_fs_req_cleanup(&req);
-
-  /* sync lchown */
-  r = uv_fs_lchown(NULL, &req, "test_file_link", -1, -1, NULL);
-  ASSERT(r == 0);
-  ASSERT(req.result == 0);
-  uv_fs_req_cleanup(&req);
-
-  /* async lchown */
-  r = uv_fs_lchown(loop, &req, "test_file_link", -1, -1, lchown_cb);
-  ASSERT(r == 0);
-  uv_run(loop, UV_RUN_DEFAULT);
-  ASSERT(lchown_cb_count == 1);
-#endif
-
-  /* Close file */
-  r = uv_fs_close(NULL, &req, file, NULL);
-  ASSERT(r == 0);
-  ASSERT(req.result == 0);
-  uv_fs_req_cleanup(&req);
-
-  /*
-   * Run the loop just to check we don't have make any extraneous uv_ref()
-   * calls. This should drop out immediately.
-   */
-  uv_run(loop, UV_RUN_DEFAULT);
-
-  /* Cleanup. */
-  unlink("test_file");
-  unlink("test_file_link");
-
-  MAKE_VALGRIND_HAPPY();
-  return 0;
-}
-
 
 TEST_IMPL(fs_link) {
   int r;
