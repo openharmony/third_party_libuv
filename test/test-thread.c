@@ -84,8 +84,6 @@ static void getaddrinfo_cb(uv_getaddrinfo_t* handle,
 #endif
   struct getaddrinfo_req* req;
 
-  ASSERT(status == 0);
-
   req = container_of(handle, struct getaddrinfo_req, handle);
   uv_freeaddrinfo(res);
 
@@ -112,35 +110,6 @@ static void fs_cb(uv_fs_t* handle) {
 }
 
 
-static void do_work(void* arg) {
-  struct getaddrinfo_req getaddrinfo_reqs[4];
-  struct fs_req fs_reqs[4];
-  uv_loop_t loop;
-  size_t i;
-  struct test_thread* thread = arg;
-
-  ASSERT(0 == uv_loop_init(&loop));
-
-  for (i = 0; i < ARRAY_SIZE(getaddrinfo_reqs); i++) {
-    struct getaddrinfo_req* req = getaddrinfo_reqs + i;
-    req->counter = 4;
-    req->loop = &loop;
-    getaddrinfo_do(req);
-  }
-
-  for (i = 0; i < ARRAY_SIZE(fs_reqs); i++) {
-    struct fs_req* req = fs_reqs + i;
-    req->counter = 4;
-    req->loop = &loop;
-    fs_do(req);
-  }
-
-  ASSERT(0 == uv_run(&loop, UV_RUN_DEFAULT));
-  ASSERT(0 == uv_loop_close(&loop));
-  thread->thread_called = 1;
-}
-
-
 static void thread_entry(void* arg) {
   ASSERT(arg == (void *) 42);
   thread_called++;
@@ -158,36 +127,6 @@ TEST_IMPL(thread_create) {
   ASSERT(r == 0);
 
   ASSERT(thread_called == 1);
-
-  return 0;
-}
-
-
-/* Hilariously bad test name. Run a lot of tasks in the thread pool and verify
- * that each "finished" callback is run in its originating thread.
- */
-TEST_IMPL(threadpool_multiple_event_loops) {
-/* TODO(gengjiawen): Fix test on QEMU. */
-#if defined(__QEMU__)
-  RETURN_SKIP("Test does not currently work in QEMU");
-#endif
-  
-  struct test_thread threads[8];
-  size_t i;
-  int r;
-
-  memset(threads, 0, sizeof(threads));
-
-  for (i = 0; i < ARRAY_SIZE(threads); i++) {
-    r = uv_thread_create(&threads[i].thread_id, do_work, &threads[i]);
-    ASSERT(r == 0);
-  }
-
-  for (i = 0; i < ARRAY_SIZE(threads); i++) {
-    r = uv_thread_join(&threads[i].thread_id);
-    ASSERT(r == 0);
-    ASSERT(threads[i].thread_called == 1);
-  }
 
   return 0;
 }
