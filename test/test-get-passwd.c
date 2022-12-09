@@ -51,51 +51,5 @@ TEST_IMPL(get_passwd) {
   ASSERT(len > 0);
 # endif
 #endif
-
-  len = strlen(pwd.homedir);
-  ASSERT(len > 0);
-
-#ifdef _WIN32
-  if (len == 3 && pwd.homedir[1] == ':')
-    ASSERT(pwd.homedir[2] == '\\');
-  else
-    ASSERT(pwd.homedir[len - 1] != '\\');
-#else
-  if (len == 1)
-    ASSERT(pwd.homedir[0] == '/');
-  else
-    ASSERT(pwd.homedir[len - 1] != '/');
-#endif
-
-#ifdef _WIN32
-  ASSERT_EQ(pwd.uid, (unsigned)-1);
-  ASSERT_EQ(pwd.gid, (unsigned)-1);
-#else
-  ASSERT_NE(pwd.uid, (unsigned)-1);
-  ASSERT_NE(pwd.gid, (unsigned)-1);
-  ASSERT_EQ(pwd.uid, geteuid());
-  if (pwd.uid != 0 && pwd.gid != getgid())
-    /* This will be likely true, as only root could have changed it. */
-    ASSERT_EQ(pwd.gid, getegid());
-#endif
-
-  /* Test uv_os_free_passwd() */
-  uv_os_free_passwd(&pwd);
-
-  ASSERT_NULL(pwd.username);
-  ASSERT_NULL(pwd.shell);
-  ASSERT_NULL(pwd.homedir);
-
-  /* Test a double free */
-  uv_os_free_passwd(&pwd);
-
-  ASSERT_NULL(pwd.username);
-  ASSERT_NULL(pwd.shell);
-  ASSERT_NULL(pwd.homedir);
-
-  /* Test invalid input */
-  r = uv_os_get_passwd(NULL);
-  ASSERT(r == UV_EINVAL);
-
   return 0;
 }

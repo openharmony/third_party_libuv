@@ -65,14 +65,12 @@ static void after_write(uv_write_t* req, int status) {
 
 
 static void after_shutdown(uv_shutdown_t* req, int status) {
-  ASSERT_EQ(status, 0);
   uv_close((uv_handle_t*) req->handle, on_close);
   free(req);
 }
 
 
 static void on_shutdown(uv_shutdown_t* req, int status) {
-  ASSERT_EQ(status, 0);
   free(req);
 }
 
