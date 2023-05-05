@@ -12,11 +12,15 @@
     "component": {
         "name": "libuv",
         "subsystem": "thirdparty",
-        "syscap": [],
+        "syscap": [
+            "SystemCapability.ArkUI.ArkUI.Libuv"
+        ],
         "features": [],
-        "adapted_system_type": [],
-        "rom": "",
-        "ram": "",
+        "adapted_system_type": [
+            "standard"
+        ],
+        "rom": "163KB",
+        "ram": "0",
         "deps": {
             "components": [],
             "third_party": []
