@@ -38,7 +38,7 @@
 #include <sys/eventfd.h>
 #endif
 
-static void uv__async_send(uv_loop_t* loop);
+static void uv__async_send(uv_async_t* handle);
 static int uv__async_start(uv_loop_t* loop);
 
 
@@ -70,11 +70,7 @@ int uv_async_send(uv_async_t* handle) {
     return 0;
 
   /* Wake up the other thread's event loop. */
-  uv__async_send(handle->loop);
-
-  /* Tell the other thread we're done. */
-  if (cmpxchgi(&handle->pending, 1, 2) != 1)
-    abort();
+  uv__async_send(handle);
 
   return 0;
 }
@@ -154,7 +150,7 @@ static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
     QUEUE_REMOVE(q);
     QUEUE_INSERT_TAIL(&loop->async_handles, q);
 
-    if (0 == uv__async_spin(h))
+    if (0 == cmpxchgi(&h->pending, 1, 0))
       continue;  /* Not pending. */
 
     if (h->async_cb == NULL)
@@ -165,11 +161,12 @@ static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 }
 
 
-static void uv__async_send(uv_loop_t* loop) {
+static void uv__async_send(uv_async_t* handle) {
   const void* buf;
   ssize_t len;
   int fd;
   int r;
+  uv_loop_t* loop = handle->loop;
 
   buf = "";
   len = 1;
@@ -186,13 +183,13 @@ static void uv__async_send(uv_loop_t* loop) {
 
   do
     r = write(fd, buf, len);
-  while (r == -1 && errno == EINTR);
+  while (r == -1 && errno == EINTR && ACCESS_ONCE(int, handle->pending) == 1);
 
   if (r == len)
     return;
 
   if (r == -1)
-    if (errno == EAGAIN || errno == EWOULDBLOCK)
+    if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)
       return;
 
   abort();
