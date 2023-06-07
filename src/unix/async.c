@@ -109,7 +109,7 @@ static int uv__async_spin(uv_async_t* handle) {
 
 
 void uv__async_close(uv_async_t* handle) {
-  uv__async_spin(handle);
+  cmpxchgi(&handle->pending, 1, 0);
   QUEUE_REMOVE(&handle->queue);
   uv__handle_stop(handle);
 }
