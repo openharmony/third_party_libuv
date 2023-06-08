@@ -322,6 +322,7 @@ if (defined(ohos_lite)) {
     deps = [ ":libuv_source" ]
     public_configs = [ ":libuv_config" ]
     subsystem_name = "thirdparty"
+    innerapi_tags = [ "platformsdk" ]
     part_name = "libuv"
     if (is_ohos) {
       output_extension = "so"
