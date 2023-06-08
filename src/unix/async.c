@@ -75,41 +75,8 @@ int uv_async_send(uv_async_t* handle) {
   return 0;
 }
 
-
-/* Only call this from the event loop thread. */
-static int uv__async_spin(uv_async_t* handle) {
-  int i;
-  int rc;
-
-  for (;;) {
-    /* 997 is not completely chosen at random. It's a prime number, acyclical
-     * by nature, and should therefore hopefully dampen sympathetic resonance.
-     */
-    for (i = 0; i < 997; i++) {
-      /* rc=0 -- handle is not pending.
-       * rc=1 -- handle is pending, other thread is still working with it.
-       * rc=2 -- handle is pending, other thread is done.
-       */
-      rc = cmpxchgi(&handle->pending, 2, 0);
-
-      if (rc != 1)
-        return rc;
-
-      /* Other thread is busy with this handle, spin until it's done. */
-      cpu_relax();
-    }
-
-    /* Yield the CPU. We may have preempted the other thread while it's
-     * inside the critical section and if it's running on the same CPU
-     * as us, we'll just burn CPU cycles until the end of our time slice.
-     */
-    sched_yield();
-  }
-}
-
-
 void uv__async_close(uv_async_t* handle) {
-  uv__async_spin(handle);
+  cmpxchgi(&handle->pending, 1, 0);
   QUEUE_REMOVE(&handle->queue);
   uv__handle_stop(handle);
 }
