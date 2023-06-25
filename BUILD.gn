@@ -63,6 +63,9 @@ if (defined(ohos_lite)) {
       "include",
       "src",
       "src/unix",
+      "//foundation/resourceschedule/ffrt/interfaces/kits"
+      "//foundation/resourceschedule/ffrt/interfaces/kits/c"
+      "//foundation/resourceschedule/ffrt/interfaces/kits/cpp"
     ]
 
     cflags = [
@@ -125,6 +128,7 @@ if (defined(ohos_lite)) {
     libs = [
       "pthread",
       "dl",
+      "//foundation/resourceschedule/ffrt:libffrt",
     ]
   }
 } else {
