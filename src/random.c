@@ -114,6 +114,7 @@ int uv_random(uv_loop_t* loop,
   req->buflen = buflen;
 
   uv__work_submit(loop,
+                  (uv_req_t*)req,
                   &req->work_req,
                   UV__WORK_CPU,
                   uv__random_work,

@@ -26,6 +26,8 @@
 #endif
 
 #include <stdlib.h>
+#include <assert.h>
+#include "ffrt.h"
 
 #define MAX_THREADPOOL_SIZE 1024
 
@@ -244,46 +246,10 @@ static void reset_once(void) {
 }
 #endif
 
-
-static void init_once(void) {
-#ifndef _WIN32
-  /* Re-initialize the threadpool after fork.
-   * Note that this discards the global mutex and condition as well
-   * as the work queue.
-   */
-  if (pthread_atfork(NULL, NULL, &reset_once))
-    abort();
-#endif
-  init_threads();
-}
-
-
-void uv__work_submit(uv_loop_t* loop,
-                     struct uv__work* w,
-                     enum uv__work_kind kind,
-                     void (*work)(struct uv__work* w),
-                     void (*done)(struct uv__work* w, int status)) {
-  uv_once(&once, init_once);
-  w->loop = loop;
-  w->work = work;
-  w->done = done;
-  post(&w->wq, kind);
-}
-
-
 static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
   int cancelled;
 
-  uv_mutex_lock(&mutex);
-  uv_mutex_lock(&w->loop->wq_mutex);
-
-  cancelled = !QUEUE_EMPTY(&w->wq) && w->work != NULL;
-  if (cancelled)
-    QUEUE_REMOVE(&w->wq);
-
-  uv_mutex_unlock(&w->loop->wq_mutex);
-  uv_mutex_unlock(&mutex);
-
+  cancelled = !ffrt_skip(req->reserved[0]) && w->work != NULL;
   if (!cancelled)
     return UV_EBUSY;
 
@@ -339,6 +305,112 @@ static void uv__queue_done(struct uv__work* w, int err) {
   req->after_work_cb(req, err);
 }
 
+void uv__ffrt_work(void* data)
+{
+  struct uv__work* w = (struct uv__work *)data;
+  w->work(w);
+
+  uv_mutex_lock(&w->loop->wq_mutex);
+  w->work = null; /* Signal uv_cancel() that the work req is done executing. */
+  QUEUE_INSERT_TAIL(&w->loop->wq, &w->wq);
+  uv_async_send(&w->loop->wq_async);
+  uv_mutex_unlock(&w->loop->wq_mutex);
+}
+
+typedef void (*ffrt_closure_t)(void*)
+typedef struct {
+  ffrt_function_header_t header;
+  ffrt_closure_t cb;
+  void* data;
+} c_function_t;
+
+static inline void ffrt_exec_function_wrapper(void* t)
+{
+  c_function_t* f = (c_function_t*)t;
+  f->cb(f->data);
+}
+
+static inline void ffrt_destroy_function_wrapper(void* t)
+{
+  c_function_t* f = (c_function_t*)t;
+  f->cb = NULL;
+  f->data = NULL;
+}
+
+static inline ffrt_function_header_t* ffrt_create_function_wrapper(const ffrt_closure_t cb, void* data)
+{
+  assert(sizeof(c_function_t) <= ffrt_auto_managed_function_storage_size);
+
+  c_function_t* f = (c_function_t*)ffrt_auto_managed_function_storage_base(ffrt_function_kind_general);
+  f->header.exec = ffrt_exec_function_wrapper;
+  f->cb = cb;
+  f->data = data;
+  return (ffrt_function_header_t*)f;
+}
+
+/* ffrt uv__work_submit */
+void uv__work_submit(uv_loop_t* loop,
+                     uv_req_t* req,
+                     struct uv__work* w,
+                     enum uv__work_kind kind,
+                     void (*work)(struct uv__work *w),
+                     void (*done)(struct uv__work *w, int status)) {
+
+    ffrt_task_attr_t attr;
+    ffrt_task_attr_init(&attr);
+
+    switch(kind) {
+      case UV__WORK_CPU:
+        ffrt_task_attr_set_qos(&attr, ffrt_qos_default);
+        break;
+      case UV__WORK_FAST_IO:
+        ffrt_task_attr_set_qos(&attr, ffrt_qos_default);
+        break;
+      case UV__WORK_SLOW_IO:
+        ffrt_task_attr_set_qos(&attr, ffrt_qos_background);
+        break;
+      default:
+        return;
+    }
+
+    w->loop = loop;
+    w->work = work;
+    w->done = done;
+
+    // ffrt_submit_base(ffrt_create_function_wrapper(uv__ffrt_work, w), NULL, NULL, &attr)
+    req->reserved[0] = ffrt_submit_h_base(ffrt_create_function_wrapper(uv__ffrt_work, w), NULL, NULL, &attr);
+    ffrt_task_attr_destroy(&attr);
+}
+
+/* ffrt uv__work_submit */
+void uv__work_submit_with_qos(uv_loop_t* loop,
+                     uv_req_t* req,
+                     struct uv__work* w,
+                     ffrt_qos_t qos,
+                     void (*work)(struct uv__work *w),
+                     void (*done)(struct uv__work *w, int status)) {
+
+    ffrt_task_attr_t attr;
+    ffrt_task_attr_init(&attr);
+    ffrt_task_attr_set_qos(&attr, qos);
+
+    w->loop = loop;
+    w->work = work;
+    w->done = done;
+
+    // ffrt_submit_base(ffrt_create_function_wrapper(uv__ffrt_work, uv__ffrt_done, w), NULL, NULL, &attr)
+    // uv_work_t* req = container_of(w, uv_work_t, work_req);
+    // ffrt_submit_base(ffrt_create_function_wrapper(uv__ffrt_work, w), NULL, NULL, &attr)
+    req->reserved[0] = ffrt_submit_h_base(ffrt_create_function_wrapper(uv__ffrt_work, w), NULL, NULL, &attr);
+    ffrt_task_attr_destroy(&attr);
+}
+
+/* destroy ffrt_task_handle in req->reserved[0] */
+void uv__destroy_ffrt_handle(uv_req_t* req) {
+  if (req->reserved[0] != NULL) {
+    ffrt_task_handle_destroy(req->reserved[0]);
+  }
+}
 
 int uv_queue_work(uv_loop_t* loop,
                   uv_work_t* req,
@@ -352,6 +424,7 @@ int uv_queue_work(uv_loop_t* loop,
   req->work_cb = work_cb;
   req->after_work_cb = after_work_cb;
   uv__work_submit(loop,
+                  (uv_req_t*)req,
                   &req->work_req,
                   UV__WORK_CPU,
                   uv__queue_work,
@@ -359,6 +432,34 @@ int uv_queue_work(uv_loop_t* loop,
   return 0;
 }
 
+int uv_queue_work_with_qos(uv_loop_t* loop,
+                  uv_work_t* req,
+                  uv_work_cb work_cb,
+                  uv_after_work_cb after_work_cb,
+                  uv_qos_t qos) {
+  if (work_cb == NULL)
+    return UV_EINVAL;
+
+  STATIC_ASSERT(uv_qos_background == ffrt_qos_background);
+  STATIC_ASSERT(uv_qos_utility == ffrt_qos_utility);
+  STATIC_ASSERT(uv_qos_default == ffrt_qos_default);
+  STATIC_ASSERT(uv_qos_user_initiated == ffrt_qos_user_initiated);
+  if (qos < ffrt_qos_background || qos > ffrt_qos_user_initiated) {
+    return UV_EINVAL;
+  }
+
+  uv__req_init(loop, req, UV_WORK);
+  req->loop = loop;
+  req->work_cb = work_cb;
+  req->after_work_cb = after_work_cb;
+  uv__work_submit(loop,
+                  (uv_req_t*)req,
+                  &req->work_req,
+                  (ffrt_qos_t)qos,
+                  uv__queue_work,
+                  uv__queue_done);
+  return 0;
+}
 
 int uv_cancel(uv_req_t* req) {
   struct uv__work* wreq;

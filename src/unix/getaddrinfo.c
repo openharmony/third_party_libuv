@@ -204,6 +204,7 @@ int uv_getaddrinfo(uv_loop_t* loop,
 
   if (cb) {
     uv__work_submit(loop,
+                    (uv_req_t*)req,
                     &req->work_req,
                     UV__WORK_SLOW_IO,
                     uv__getaddrinfo_work,

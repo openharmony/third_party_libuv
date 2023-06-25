@@ -152,6 +152,7 @@ extern char *mkdtemp(char *template); /* See issue #740 on AIX < 7 */
     if (cb != NULL) {                                                         \
       uv__req_register(loop, req);                                            \
       uv__work_submit(loop,                                                   \
+                      (uv_req_t*)req,                                         \
                       &req->work_req,                                         \
                       UV__WORK_FAST_IO,                                       \
                       uv__fs_work,                                            \

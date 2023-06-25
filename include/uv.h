@@ -1102,6 +1102,18 @@ UV_EXTERN int uv_queue_work(uv_loop_t* loop,
 
 UV_EXTERN int uv_cancel(uv_req_t* req);
 
+typedef enum {
+  uv_qos_background = 1,
+  uv_qos_utility = 2,
+  uv_qos_default = 3,
+  uv_qos_user_initiated = 4,
+} uv_qos_t;
+
+UV_EXTERN int uv_queue_work_with_qos(uv_loop_t* loop,
+                                     uv_work_t* req,
+                                     uv_work_cb work_cb,
+                                     uv_after_work_cb after_work_cb,
+                                     uv_qos_t qos);
 
 struct uv_cpu_times_s {
   uint64_t user; /* milliseconds */

@@ -204,9 +204,12 @@ enum uv__work_kind {
 
 void uv__work_submit(uv_loop_t* loop,
                      struct uv__work *w,
+                     uv_req_t* req,
                      enum uv__work_kind kind,
                      void (*work)(struct uv__work *w),
                      void (*done)(struct uv__work *w, int status));
+
+void uv__destroy_ffrt_handle(uv_req_t* req);
 
 void uv__work_done(uv_async_t* handle);
 
