@@ -40,6 +40,7 @@ if (defined(ohos_lite)) {
     # error in debug version, FIX ME
     # https://gitee.com/openharmony/build/pulls/1206/files
     defines += [ "NDEBUG" ]
+    defines += [ "USE_FFRT" ]
   }
 
   # This is the configuration used to build libuv itself.
@@ -56,6 +57,7 @@ if (defined(ohos_lite)) {
     # error in debug version, FIX ME
     # https://gitee.com/openharmony/build/pulls/1206/files
     defines += [ "NDEBUG" ]
+    defines += [ "USE_FFRT" ]
   }
 
   source_set("libuv_source") {
@@ -189,6 +191,7 @@ if (defined(ohos_lite)) {
       # error in debug version, FIX ME
       # https://gitee.com/openharmony/build/pulls/1206/files
       defines = [ "NDEBUG" ]
+      defines += [ "USE_FFRT" ]
     } else if (is_mingw || is_win) {
       cflags += [
         "-Wno-missing-braces",
@@ -203,6 +206,7 @@ if (defined(ohos_lite)) {
         "WIN32_LEAN_AND_MEAN",
         "_WIN32_WINNT=0x0600",
       ]
+      defines += [ "USE_FFRT" ]
 
       # Adding NDEBUG macro manually to avoid compilation
       # error in debug version, FIX ME
@@ -234,6 +238,7 @@ if (defined(ohos_lite)) {
     # error in debug version, FIX ME
     # https://gitee.com/openharmony/build/pulls/1206/files
     defines = [ "NDEBUG" ]
+    defines += [ "USE_FFRT" ]
   }
 
   ohos_source_set("libuv_source") {
