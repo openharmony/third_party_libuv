@@ -26,8 +26,10 @@
 #endif
 
 #include <stdlib.h>
+#ifdef USE_FFRT
 #include <assert.h>
 #include "ffrt.h"
+#endif
 
 #define MAX_THREADPOOL_SIZE 1024
 
@@ -246,13 +248,50 @@ static void reset_once(void) {
 }
 #endif
 
+#ifndef USE_FFRT
+static void init_once(void) {
+#ifndef _WIN32
+  /* Re-initialize the threadpool after fork.
+   * Note that this discards the global mutex and condition as well
+   * as the work queue.
+   */
+  if (pthread_atfork(NULL, NULL, &reset_once))
+    abort();
+#endif 
+  init_threads();
+}
+
+
+void uv__work_submit(uv_loop_t* loop,
+                     struct uv__work* w,
+                     enum uv__work_kind kind,
+                     void (*work)(struct uv__work* w),
+                     void (*done)(struct uv__work* w, int status)) {
+  uv_once(&once, init_once);
+  w->loop = loop;
+  w->work = work;
+  w->done = done;
+  post(&w->wq, kind);
+}
+#endif
+
 static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
   int cancelled;
+#ifndef USE_FFRT
+  uv_mutex_lock(&mutex);
+  uv_mutex_lock(&w->loop->wq_mutex);
 
+  cancelled = !QUEUE_EMPTY(&w->wq) && w->work != NULL;
+  if (cancelled)
+    QUEUE_REMOVE(&w->wq);
+
+  uv_mutex_unlock(&w->loop->wq_mutex);
+  uv_mutex_unlock(&mutex);
+#else
   cancelled = !ffrt_skip(req->reserved[0]) && w->work != NULL;
   if (!cancelled)
     return UV_EBUSY;
-
+#endif
   w->work = uv__cancelled;
   uv_mutex_lock(&loop->wq_mutex);
   QUEUE_INSERT_TAIL(&loop->wq, &w->wq);
@@ -305,6 +344,7 @@ static void uv__queue_done(struct uv__work* w, int err) {
   req->after_work_cb(req, err);
 }
 
+#ifdef USE_FFRT
 void uv__ffrt_work(void* data)
 {
   struct uv__work* w = (struct uv__work *)data;
@@ -411,9 +451,12 @@ void uv__destroy_ffrt_handle(uv_req_t* req) {
     ffrt_task_handle_destroy(req->reserved[0]);
   }
 }
+#endif
 
 int uv_queue_work(uv_loop_t* loop,
+#ifdef USE_FFRT
                   uv_work_t* req,
+#endif
                   uv_work_cb work_cb,
                   uv_after_work_cb after_work_cb) {
   if (work_cb == NULL)
@@ -432,6 +475,7 @@ int uv_queue_work(uv_loop_t* loop,
   return 0;
 }
 
+#ifdef USE_FFRT
 int uv_queue_work_with_qos(uv_loop_t* loop,
                   uv_work_t* req,
                   uv_work_cb work_cb,
@@ -460,6 +504,7 @@ int uv_queue_work_with_qos(uv_loop_t* loop,
                   uv__queue_done);
   return 0;
 }
+#endif
 
 int uv_cancel(uv_req_t* req) {
   struct uv__work* wreq;
