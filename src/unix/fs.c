@@ -152,7 +152,7 @@ extern char *mkdtemp(char *template); /* See issue #740 on AIX < 7 */
     if (cb != NULL) {                                                         \
       uv__req_register(loop, req);                                            \
       uv__work_submit(loop,                                                   \
-#ifdef
+#ifdef USE_FFRT
                       (uv_req_t*)req,                                         \
 #endif
                       &req->work_req,                                         \

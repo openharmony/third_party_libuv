@@ -204,7 +204,7 @@ int uv_getaddrinfo(uv_loop_t* loop,
 
   if (cb) {
     uv__work_submit(loop,
-#ifdef
+#ifdef USE_FFRT
                     (uv_req_t*)req,
 #endif
                     &req->work_req,

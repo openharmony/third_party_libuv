@@ -257,7 +257,7 @@ static void init_once(void) {
    */
   if (pthread_atfork(NULL, NULL, &reset_once))
     abort();
-#endif 
+#endif
   init_threads();
 }
 
@@ -467,7 +467,9 @@ int uv_queue_work(uv_loop_t* loop,
   req->work_cb = work_cb;
   req->after_work_cb = after_work_cb;
   uv__work_submit(loop,
+#ifdef USE_FFRT
                   (uv_req_t*)req,
+#endif
                   &req->work_req,
                   UV__WORK_CPU,
                   uv__queue_work,
