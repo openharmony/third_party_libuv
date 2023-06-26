@@ -454,9 +454,7 @@ void uv__destroy_ffrt_handle(uv_req_t* req) {
 #endif
 
 int uv_queue_work(uv_loop_t* loop,
-#ifdef USE_FFRT
                   uv_work_t* req,
-#endif
                   uv_work_cb work_cb,
                   uv_after_work_cb after_work_cb) {
   if (work_cb == NULL)
