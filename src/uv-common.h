@@ -203,16 +203,13 @@ enum uv__work_kind {
 };
 
 void uv__work_submit(uv_loop_t* loop,
-                     struct uv__work *w,
 #ifdef USE_FFRT
                      uv_req_t* req,
 #endif
+                     struct uv__work *w,
                      enum uv__work_kind kind,
                      void (*work)(struct uv__work *w),
                      void (*done)(struct uv__work *w, int status));
-#ifdef USE_FFRT
-void uv__destroy_ffrt_handle(uv_req_t* req);
-#endif
 
 void uv__work_done(uv_async_t* handle);
 
