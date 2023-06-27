@@ -1104,10 +1104,10 @@ UV_EXTERN int uv_cancel(uv_req_t* req);
 
 #ifdef USE_FFRT
 typedef enum {
-  uv_qos_background = 1,
-  uv_qos_utility = 2,
-  uv_qos_default = 3,
-  uv_qos_user_initiated = 4,
+  uv_qos_background = 0,
+  uv_qos_utility = 1,
+  uv_qos_default = 2,
+  uv_qos_user_initiated = 3,
 } uv_qos_t;
 
 UV_EXTERN int uv_queue_work_with_qos(uv_loop_t* loop,

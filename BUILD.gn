@@ -21,6 +21,7 @@
 if (defined(ohos_lite)) {
   import("//build/lite/config/component/lite_component.gni")
   import("//build/lite/ndk/ndk.gni")
+  import("//third_party/libuv/libuv.gni")
 
   # This is the configuration needed to use libuv.
   config("libuv_config") {
@@ -40,7 +41,9 @@ if (defined(ohos_lite)) {
     # error in debug version, FIX ME
     # https://gitee.com/openharmony/build/pulls/1206/files
     defines += [ "NDEBUG" ]
-    defines += [ "USE_FFRT" ]
+    if (use_ffrt) {
+      defines += [ "USE_FFRT" ]
+    }
   }
 
   # This is the configuration used to build libuv itself.
@@ -57,7 +60,6 @@ if (defined(ohos_lite)) {
     # error in debug version, FIX ME
     # https://gitee.com/openharmony/build/pulls/1206/files
     defines += [ "NDEBUG" ]
-    defines += [ "USE_FFRT" ]
   }
 
   source_set("libuv_source") {
@@ -65,9 +67,6 @@ if (defined(ohos_lite)) {
       "include",
       "src",
       "src/unix",
-      "//foundation/resourceschedule/ffrt/interfaces/kits"
-      "//foundation/resourceschedule/ffrt/interfaces/kits/c"
-      "//foundation/resourceschedule/ffrt/interfaces/kits/cpp"
     ]
 
     cflags = [
@@ -117,6 +116,14 @@ if (defined(ohos_lite)) {
       "src/unix/tty.c",
       "src/unix/udp.c",
     ]
+
+    if (use_ffrt) {
+      include_dirs += [
+        "//foundation/resourceschedule/ffrt/interfaces/kits",
+        "//foundation/resourceschedule/ffrt/interfaces/kits/c",
+        "//foundation/resourceschedule/ffrt/interfaces/kits/cpp",
+      ]
+    }
   }
 
   static_library("uv_static") {
@@ -130,11 +137,15 @@ if (defined(ohos_lite)) {
     libs = [
       "pthread",
       "dl",
-      "//foundation/resourceschedule/ffrt:libffrt",
     ]
+
+    if (use_ffrt) {
+      external_deps = [ "ffrt:libffrt" ]
+    }
   }
 } else {
   import("//build/ohos.gni")
+  import("//third_party/libuv/libuv.gni")
 
   common_source = [
     "src/fs-poll.c",
@@ -191,7 +202,15 @@ if (defined(ohos_lite)) {
       # error in debug version, FIX ME
       # https://gitee.com/openharmony/build/pulls/1206/files
       defines = [ "NDEBUG" ]
-      defines += [ "USE_FFRT" ]
+      if (use_ffrt) {
+        include_dirs += [
+          "//foundation/resourceschedule/ffrt/interfaces/kits",
+          "//foundation/resourceschedule/ffrt/interfaces/kits/c",
+          "//foundation/resourceschedule/ffrt/interfaces/kits/cpp",
+        ]
+
+        defines += [ "USE_FFRT" ]
+      }
     } else if (is_mingw || is_win) {
       cflags += [
         "-Wno-missing-braces",
@@ -206,7 +225,6 @@ if (defined(ohos_lite)) {
         "WIN32_LEAN_AND_MEAN",
         "_WIN32_WINNT=0x0600",
       ]
-      defines += [ "USE_FFRT" ]
 
       # Adding NDEBUG macro manually to avoid compilation
       # error in debug version, FIX ME
@@ -238,7 +256,6 @@ if (defined(ohos_lite)) {
     # error in debug version, FIX ME
     # https://gitee.com/openharmony/build/pulls/1206/files
     defines = [ "NDEBUG" ]
-    defines += [ "USE_FFRT" ]
   }
 
   ohos_source_set("libuv_source") {
@@ -335,6 +352,9 @@ if (defined(ohos_lite)) {
     part_name = "libuv"
     if (is_ohos) {
       output_extension = "so"
+    }
+    if (use_ffrt) {
+      external_deps = [ "ffrt:libffrt" ]
     }
     install_images = [
       "system",
