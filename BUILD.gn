@@ -187,7 +187,7 @@ if (defined(ohos_lite)) {
       # error in debug version, FIX ME
       # https://gitee.com/openharmony/build/pulls/1206/files
       defines = [ "NDEBUG" ]
-      if (use_ffrt) {
+      if (use_ffrt && device_name != "sdk" && device_company != "qemu") {
         defines += [ "USE_FFRT" ]
       }
     } else if (is_mingw || is_win) {
@@ -292,7 +292,7 @@ if (defined(ohos_lite)) {
                    "src/unix/random-sysctl-linux.c",
                    "src/unix/proctitle.c",
                  ]
-      if (use_ffrt) {
+      if (use_ffrt && device_name != "sdk" && device_company != "qemu") {
         external_deps = [ "ffrt:libffrt" ]
       }
     } else if (is_linux) {
@@ -305,7 +305,7 @@ if (defined(ohos_lite)) {
                    "src/unix/random-sysctl-linux.c",
                    "src/unix/proctitle.c",
                  ]
-      if (use_ffrt) {
+      if (use_ffrt && device_name != "sdk" && device_company != "qemu") {
         external_deps = [ "ffrt:libffrt" ]
       }
     } else {
