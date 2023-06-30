@@ -21,6 +21,7 @@
 if (defined(ohos_lite)) {
   import("//build/lite/config/component/lite_component.gni")
   import("//build/lite/ndk/ndk.gni")
+  import("//third_party/libuv/libuv.gni")
 
   # This is the configuration needed to use libuv.
   config("libuv_config") {
@@ -129,6 +130,7 @@ if (defined(ohos_lite)) {
   }
 } else {
   import("//build/ohos.gni")
+  import("//third_party/libuv/libuv.gni")
 
   common_source = [
     "src/fs-poll.c",
@@ -185,6 +187,9 @@ if (defined(ohos_lite)) {
       # error in debug version, FIX ME
       # https://gitee.com/openharmony/build/pulls/1206/files
       defines = [ "NDEBUG" ]
+      if (use_ffrt && device_name != "sdk" && device_company != "qemu") {
+        defines += [ "USE_FFRT" ]
+      }
     } else if (is_mingw || is_win) {
       cflags += [
         "-Wno-missing-braces",
@@ -287,6 +292,9 @@ if (defined(ohos_lite)) {
                    "src/unix/random-sysctl-linux.c",
                    "src/unix/proctitle.c",
                  ]
+      if (use_ffrt && device_name != "sdk" && device_company != "qemu") {
+        external_deps = [ "ffrt:libffrt" ]
+      }
     } else if (is_linux) {
       sources += nonwin_srcs + [
                    "src/unix/linux-core.c",
@@ -297,6 +305,9 @@ if (defined(ohos_lite)) {
                    "src/unix/random-sysctl-linux.c",
                    "src/unix/proctitle.c",
                  ]
+      if (use_ffrt && device_name != "sdk" && device_company != "qemu") {
+        external_deps = [ "ffrt:libffrt" ]
+      }
     } else {
       sources += nonwin_srcs + [
                    "src/unix/linux-core.c",

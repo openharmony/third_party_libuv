@@ -108,6 +108,9 @@ int uv_getnameinfo(uv_loop_t* loop,
 
   if (getnameinfo_cb) {
     uv__work_submit(loop,
+#ifdef USE_FFRT
+                    (uv_req_t*)req,
+#endif
                     &req->work_req,
                     UV__WORK_SLOW_IO,
                     uv__getnameinfo_work,

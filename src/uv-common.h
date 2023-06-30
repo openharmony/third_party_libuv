@@ -203,6 +203,9 @@ enum uv__work_kind {
 };
 
 void uv__work_submit(uv_loop_t* loop,
+#ifdef USE_FFRT
+                     uv_req_t* req,
+#endif
                      struct uv__work *w,
                      enum uv__work_kind kind,
                      void (*work)(struct uv__work *w),

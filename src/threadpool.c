@@ -26,14 +26,16 @@
 #endif
 
 #include <stdlib.h>
+#ifdef USE_FFRT
+#include <assert.h>
+#include "ffrt.h"
+#endif
 
 #define MAX_THREADPOOL_SIZE 1024
 
-static uv_once_t once = UV_ONCE_INIT;
 static uv_cond_t cond;
 static uv_mutex_t mutex;
 static unsigned int idle_threads;
-static unsigned int slow_io_work_running;
 static unsigned int nthreads;
 static uv_thread_t* threads;
 static uv_thread_t default_threads[4];
@@ -42,12 +44,16 @@ static QUEUE wq;
 static QUEUE run_slow_work_message;
 static QUEUE slow_io_pending_wq;
 
-static unsigned int slow_work_thread_threshold(void) {
-  return (nthreads + 1) / 2;
-}
-
 static void uv__cancelled(struct uv__work* w) {
   abort();
+}
+
+#ifndef USE_FFRT
+static uv_once_t once = UV_ONCE_INIT;
+static unsigned int slow_io_work_running;
+
+static unsigned int slow_work_thread_threshold(void) {
+  return (nthreads + 1) / 2;
 }
 
 
@@ -137,6 +143,7 @@ static void worker(void* arg) {
     }
   }
 }
+#endif
 
 
 static void post(QUEUE* q, enum uv__work_kind kind) {
@@ -190,6 +197,7 @@ void uv__threadpool_cleanup(void) {
 }
 
 
+#ifndef USE_FFRT
 static void init_threads(void) {
   unsigned int i;
   const char* val;
@@ -269,11 +277,13 @@ void uv__work_submit(uv_loop_t* loop,
   w->done = done;
   post(&w->wq, kind);
 }
+#endif
 
 
 static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
   int cancelled;
 
+#ifndef USE_FFRT
   uv_mutex_lock(&mutex);
   uv_mutex_lock(&w->loop->wq_mutex);
 
@@ -283,6 +293,9 @@ static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
 
   uv_mutex_unlock(&w->loop->wq_mutex);
   uv_mutex_unlock(&mutex);
+#else
+  cancelled = !ffrt_skip(req->reserved[0]) && w->work != NULL;
+#endif
 
   if (!cancelled)
     return UV_EBUSY;
@@ -340,6 +353,112 @@ static void uv__queue_done(struct uv__work* w, int err) {
 }
 
 
+#ifdef USE_FFRT
+void uv__ffrt_work(void* data)
+{
+  struct uv__work* w = (struct uv__work *)data;
+  w->work(w);
+
+  uv_mutex_lock(&w->loop->wq_mutex);
+  w->work = NULL; /* Signal uv_cancel() that the work req is done executing. */
+  QUEUE_INSERT_TAIL(&w->loop->wq, &w->wq);
+  uv_async_send(&w->loop->wq_async);
+  uv_mutex_unlock(&w->loop->wq_mutex);
+}
+
+
+typedef void (*ffrt_closure_t)(void*);
+typedef struct {
+  ffrt_function_header_t header;
+  ffrt_closure_t cb;
+  void* data;
+} c_function_t;
+
+
+static inline void ffrt_exec_function_wrapper(void* t)
+{
+  c_function_t* f = (c_function_t*)t;
+  f->cb(f->data);
+}
+
+
+static inline void ffrt_destroy_function_wrapper(void* t)
+{
+  c_function_t* f = (c_function_t*)t;
+  f->cb = NULL;
+  f->data = NULL;
+}
+
+
+static inline ffrt_function_header_t* ffrt_create_function_wrapper(const ffrt_closure_t cb, void* data)
+{
+  assert(sizeof(c_function_t) <= ffrt_auto_managed_function_storage_size);
+
+  c_function_t* f = (c_function_t*)ffrt_alloc_auto_managed_function_storage_base(ffrt_function_kind_general);
+  f->header.exec = ffrt_exec_function_wrapper;
+  f->header.destroy = ffrt_destroy_function_wrapper;
+  f->cb = cb;
+  f->data = data;
+  return (ffrt_function_header_t*)f;
+}
+
+
+/* ffrt uv__work_submit */
+void uv__work_submit(uv_loop_t* loop,
+                     uv_req_t* req,
+                     struct uv__work* w,
+                     enum uv__work_kind kind,
+                     void (*work)(struct uv__work *w),
+                     void (*done)(struct uv__work *w, int status)) {
+
+    ffrt_task_attr_t attr;
+    ffrt_task_attr_init(&attr);
+
+    switch(kind) {
+      case UV__WORK_CPU:
+        ffrt_task_attr_set_qos(&attr, ffrt_qos_default);
+        break;
+      case UV__WORK_FAST_IO:
+        ffrt_task_attr_set_qos(&attr, ffrt_qos_default);
+        break;
+      case UV__WORK_SLOW_IO:
+        ffrt_task_attr_set_qos(&attr, ffrt_qos_background);
+        break;
+      default:
+        return;
+    }
+
+    w->loop = loop;
+    w->work = work;
+    w->done = done;
+
+    req->reserved[0] = ffrt_submit_h_base(ffrt_create_function_wrapper(uv__ffrt_work, w), NULL, NULL, &attr);
+    ffrt_task_attr_destroy(&attr);
+}
+
+
+/* ffrt uv__work_submit */
+void uv__work_submit_with_qos(uv_loop_t* loop,
+                     uv_req_t* req,
+                     struct uv__work* w,
+                     ffrt_qos_t qos,
+                     void (*work)(struct uv__work *w),
+                     void (*done)(struct uv__work *w, int status)) {
+
+    ffrt_task_attr_t attr;
+    ffrt_task_attr_init(&attr);
+    ffrt_task_attr_set_qos(&attr, qos);
+
+    w->loop = loop;
+    w->work = work;
+    w->done = done;
+
+    req->reserved[0] = ffrt_submit_h_base(ffrt_create_function_wrapper(uv__ffrt_work, w), NULL, NULL, &attr);
+    ffrt_task_attr_destroy(&attr);
+}
+#endif
+
+
 int uv_queue_work(uv_loop_t* loop,
                   uv_work_t* req,
                   uv_work_cb work_cb,
@@ -352,12 +471,47 @@ int uv_queue_work(uv_loop_t* loop,
   req->work_cb = work_cb;
   req->after_work_cb = after_work_cb;
   uv__work_submit(loop,
+#ifdef USE_FFRT
+                  (uv_req_t*)req,
+#endif
                   &req->work_req,
                   UV__WORK_CPU,
                   uv__queue_work,
                   uv__queue_done);
   return 0;
 }
+
+
+#ifdef USE_FFRT
+int uv_queue_work_with_qos(uv_loop_t* loop,
+                  uv_work_t* req,
+                  uv_work_cb work_cb,
+                  uv_after_work_cb after_work_cb,
+                  uv_qos_t qos) {
+  if (work_cb == NULL)
+    return UV_EINVAL;
+
+  STATIC_ASSERT(uv_qos_background == ffrt_qos_background);
+  STATIC_ASSERT(uv_qos_utility == ffrt_qos_utility);
+  STATIC_ASSERT(uv_qos_default == ffrt_qos_default);
+  STATIC_ASSERT(uv_qos_user_initiated == ffrt_qos_user_initiated);
+  if (qos < ffrt_qos_background || qos > ffrt_qos_user_initiated) {
+    return UV_EINVAL;
+  }
+
+  uv__req_init(loop, req, UV_WORK);
+  req->loop = loop;
+  req->work_cb = work_cb;
+  req->after_work_cb = after_work_cb;
+  uv__work_submit_with_qos(loop,
+                  (uv_req_t*)req,
+                  &req->work_req,
+                  (ffrt_qos_t)qos,
+                  uv__queue_work,
+                  uv__queue_done);
+  return 0;
+}
+#endif
 
 
 int uv_cancel(uv_req_t* req) {
