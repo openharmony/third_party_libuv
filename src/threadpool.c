@@ -355,7 +355,7 @@ static void uv__queue_done(struct uv__work* w, int err) {
 
 
 #ifdef USE_FFRT
-void uv__ffrt_work(void* data)
+void uv__ffrt_work(ffrt_executor_task_t* data)
 {
   struct uv__work* w = (struct uv__work *)data;
   w->work(w);
