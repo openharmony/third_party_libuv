@@ -367,7 +367,7 @@ void uv__ffrt_work(void* data)
   uv_mutex_unlock(&w->loop->wq_mutex);
 }
 
-static void int init_once(void)
+static void init_once(void)
 {
   ffrt_executor_task_register_func(uv__ffrt_work, "uv");
 }
