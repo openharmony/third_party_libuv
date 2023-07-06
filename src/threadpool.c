@@ -484,8 +484,8 @@ int uv_queue_work_with_qos(uv_loop_t* loop,
   return 0;
 #else
   return uv_queue_work(loop, req, work_cb, after_work_cb);
-}
 #endif
+}
 
 
 int uv_cancel(uv_req_t* req) {
