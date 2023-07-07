@@ -1102,7 +1102,6 @@ UV_EXTERN int uv_queue_work(uv_loop_t* loop,
 
 UV_EXTERN int uv_cancel(uv_req_t* req);
 
-#ifdef USE_FFRT
 typedef enum {
   uv_qos_background = 0,
   uv_qos_utility = 1,
@@ -1115,7 +1114,6 @@ UV_EXTERN int uv_queue_work_with_qos(uv_loop_t* loop,
                                      uv_work_cb work_cb,
                                      uv_after_work_cb after_work_cb,
                                      uv_qos_t qos);
-#endif
 
 struct uv_cpu_times_s {
   uint64_t user; /* milliseconds */
