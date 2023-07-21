@@ -404,7 +404,7 @@ void uv__work_submit(uv_loop_t* loop,
     w->work = work;
     w->done = done;
 
-    req->reserved[0] = (void *)ffrt_task_attr_get_qos(&attr);
+    req->reserved[0] = (void *)(intptr_t)ffrt_task_attr_get_qos(&attr);
     ffrt_executor_task_submit((ffrt_executor_task_t *)w, &attr);
     ffrt_task_attr_destroy(&attr);
 }
@@ -426,7 +426,7 @@ void uv__work_submit_with_qos(uv_loop_t* loop,
     w->work = work;
     w->done = done;
 
-    req->reserved[0] = (void *)ffrt_task_attr_get_qos(&attr);
+    req->reserved[0] = (void *)(intptr_t)ffrt_task_attr_get_qos(&attr);
     ffrt_executor_task_submit((ffrt_executor_task_t *)w, &attr);
     ffrt_task_attr_destroy(&attr);
 }
