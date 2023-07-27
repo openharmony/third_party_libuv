@@ -106,18 +106,18 @@ typedef void *QUEUE[2];
   while (0)
 
 #ifdef USE_FFRT
-  #define QUEUE_APPEND(h, n)                                                  \
-    do {                                                                      \
-      QUEUE* q = QUEUE_HEAD(h);                                               \
-      QUEUE* p = QUEUE_PREV(n);                                               \
-      QUEUE_PREV(n) = QUEUE_PREV(h);                                          \
-      QUEUE_PREV_NEXT(n) = (n);                                               \
-      QUEUE_NEXT(p) = (q);                                                    \
-      QUEUE_PREV(h) = QUEUE_PREV(q);                                          \
-      QUEUE_PREV_NEXT(h) = (h);                                               \
-      QUEUE_PREV(q) = (p);                                                    \
-    }                                                                         \
-    while (0)
+#define QUEUE_APPEND(h, n)                                                    \
+  do {                                                                        \
+    QUEUE* q = QUEUE_HEAD(h);                                                 \
+    QUEUE* p = QUEUE_PREV(n);                                                 \
+    QUEUE_PREV(n) = QUEUE_PREV(h);                                            \
+    QUEUE_PREV_NEXT(n) = (n);                                                 \
+    QUEUE_NEXT(p) = (q);                                                      \
+    QUEUE_PREV(h) = QUEUE_PREV(q);                                            \
+    QUEUE_PREV_NEXT(h) = (h);                                                 \
+    QUEUE_PREV(q) = (p);                                                      \
+  }                                                                           \
+  while (0)
 #endif
 
 #endif /* QUEUE_H_ */
