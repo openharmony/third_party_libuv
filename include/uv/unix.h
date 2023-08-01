@@ -218,73 +218,38 @@ typedef struct {
   char* errmsg;
 } uv_lib_t;
 
-#ifndef USE_FFRT
-  #define UV_LOOP_PRIVATE_FIELDS                                                \
-    unsigned long flags;                                                        \
-    int backend_fd;                                                             \
-    void* pending_queue[2];                                                     \
-    void* watcher_queue[2];                                                     \
-    uv__io_t** watchers;                                                        \
-    unsigned int nwatchers;                                                     \
-    unsigned int nfds;                                                          \
-    void* wq[2];                                                                \
-    uv_mutex_t wq_mutex;                                                        \
-    uv_async_t wq_async;                                                        \
-    uv_rwlock_t cloexec_lock;                                                   \
-    uv_handle_t* closing_handles;                                               \
-    void* process_handles[2];                                                   \
-    void* prepare_handles[2];                                                   \
-    void* check_handles[2];                                                     \
-    void* idle_handles[2];                                                      \
-    void* async_handles[2];                                                     \
-    void (*async_unused)(void);  /* TODO(bnoordhuis) Remove in libuv v2. */     \
-    uv__io_t async_io_watcher;                                                  \
-    int async_wfd;                                                              \
-    struct {                                                                    \
-      void* min;                                                                \
-      unsigned int nelts;                                                       \
-    } timer_heap;                                                               \
-    uint64_t timer_counter;                                                     \
-    uint64_t time;                                                              \
-    int signal_pipefd[2];                                                       \
-    uv__io_t signal_io_watcher;                                                 \
-    uv_signal_t child_watcher;                                                  \
-    int emfile_fd;                                                              \
-    UV_PLATFORM_LOOP_FIELDS
-#else
-  #define UV_LOOP_PRIVATE_FIELDS                                                \
-    unsigned long flags;                                                        \
-    int backend_fd;                                                             \
-    void* pending_queue[2];                                                     \
-    void* watcher_queue[2];                                                     \
-    uv__io_t** watchers;                                                        \
-    unsigned int nwatchers;                                                     \
-    unsigned int nfds;                                                          \
-    void* wq[4][2];                                                             \
-    uv_mutex_t wq_mutex;                                                        \
-    uv_async_t wq_async;                                                        \
-    uv_rwlock_t cloexec_lock;                                                   \
-    uv_handle_t* closing_handles;                                               \
-    void* process_handles[2];                                                   \
-    void* prepare_handles[2];                                                   \
-    void* check_handles[2];                                                     \
-    void* idle_handles[2];                                                      \
-    void* async_handles[2];                                                     \
-    void (*async_unused)(void);  /* TODO(bnoordhuis) Remove in libuv v2. */     \
-    uv__io_t async_io_watcher;                                                  \
-    int async_wfd;                                                              \
-    struct {                                                                    \
-      void* min;                                                                \
-      unsigned int nelts;                                                       \
-    } timer_heap;                                                               \
-    uint64_t timer_counter;                                                     \
-    uint64_t time;                                                              \
-    int signal_pipefd[2];                                                       \
-    uv__io_t signal_io_watcher;                                                 \
-    uv_signal_t child_watcher;                                                  \
-    int emfile_fd;                                                              \
-    UV_PLATFORM_LOOP_FIELDS
-#endif
+#define UV_LOOP_PRIVATE_FIELDS                                                \
+  unsigned long flags;                                                        \
+  int backend_fd;                                                             \
+  void* pending_queue[2];                                                     \
+  void* watcher_queue[2];                                                     \
+  uv__io_t** watchers;                                                        \
+  unsigned int nwatchers;                                                     \
+  unsigned int nfds;                                                          \
+  void* wq[2];                                                                \
+  uv_mutex_t wq_mutex;                                                        \
+  uv_async_t wq_async;                                                        \
+  uv_rwlock_t cloexec_lock;                                                   \
+  uv_handle_t* closing_handles;                                               \
+  void* process_handles[2];                                                   \
+  void* prepare_handles[2];                                                   \
+  void* check_handles[2];                                                     \
+  void* idle_handles[2];                                                      \
+  void* async_handles[2];                                                     \
+  void (*async_unused)(void);  /* TODO(bnoordhuis) Remove in libuv v2. */     \
+  uv__io_t async_io_watcher;                                                  \
+  int async_wfd;                                                              \
+  struct {                                                                    \
+    void* min;                                                                \
+    unsigned int nelts;                                                       \
+  } timer_heap;                                                               \
+  uint64_t timer_counter;                                                     \
+  uint64_t time;                                                              \
+  int signal_pipefd[2];                                                       \
+  uv__io_t signal_io_watcher;                                                 \
+  uv_signal_t child_watcher;                                                  \
+  int emfile_fd;                                                              \
+  UV_PLATFORM_LOOP_FIELDS                                                     \
 
 #define UV_REQ_TYPE_PRIVATE /* empty */
 
