@@ -28,8 +28,7 @@
 #include <stdlib.h>
 #ifdef USE_FFRT
 #include <assert.h>
-#include "ffrt.h"
-#include "executor_task.h"
+#include "ffrt_inner.h"
 #endif
 
 #define MAX_THREADPOOL_SIZE 1024
