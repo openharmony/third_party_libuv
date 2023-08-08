@@ -382,7 +382,7 @@ void uv__ffrt_work(ffrt_executor_task_t* data, ffrt_qos_t qos)
   uv_mutex_lock(&w->loop->wq_mutex);
   w->work = NULL; /* Signal uv_cancel() that the work req is done executing. */
   uv__loop_internal_fields_t* lfields = uv__get_internal_fields(w->loop);
-  QUEUE_INSERT_TAIL(&lfields->wq_sub[qos], &w->wq);
+  QUEUE_INSERT_TAIL(&(lfields->wq_sub[qos]), &w->wq);
   uv_async_send(&w->loop->wq_async);
   uv_mutex_unlock(&w->loop->wq_mutex);
 }
