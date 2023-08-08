@@ -374,6 +374,7 @@ void uv__metrics_set_provider_entry_time(uv_loop_t* loop);
 struct uv__loop_internal_fields_s {
   unsigned int flags;
   uv__loop_metrics_t loop_metrics;
+  void* wq_sub[4][2];
 };
 
 #endif /* UV_COMMON_H_ */
