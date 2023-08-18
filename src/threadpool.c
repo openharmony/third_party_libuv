@@ -380,7 +380,7 @@ void uv__ffrt_work(ffrt_executor_task_t* data, ffrt_qos_t qos)
   w->work(w);
   uv__loop_internal_fields_t* lfields = uv__get_internal_fields(w->loop);
 
-  if(&lfields->wq_sub[qos][0] == NULL || &lfields->wq_sub[qos][1] == NULL)
+  if (&lfields->wq_sub[qos][0] == NULL || &lfields->wq_sub[qos][1] == NULL)
     return;
 
   uv_mutex_lock(&w->loop->wq_mutex);
