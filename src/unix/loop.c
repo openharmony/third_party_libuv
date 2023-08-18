@@ -47,9 +47,8 @@ int uv_loop_init(uv_loop_t* loop) {
     goto fail_metrics_mutex_init;
 
   heap_init((struct heap*) &loop->timer_heap);
-#ifndef USE_FFRT
   QUEUE_INIT(&loop->wq);
-#else
+#ifdef USE_FFRT
 uv__loop_internal_fields_t* lfields_qos = uv__get_internal_fields(loop);
   QUEUE_INIT(&(lfields->wq_sub[uv_qos_background]));
   QUEUE_INIT(&(lfields->wq_sub[uv_qos_utility]));
