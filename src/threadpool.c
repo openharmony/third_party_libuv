@@ -365,7 +365,7 @@ void uv__ffrt_work(ffrt_executor_task_t* data)
   uv_mutex_lock(&w->loop->wq_mutex);
   w->work = NULL; /* Signal uv_cancel() that the work req is done executing. */
 
-  if (&w->loop->wq[0] == NULL or &w->loop->wq[1] == NULL)
+  if (&w->loop->wq[0] == NULL || &w->loop->wq[1] == NULL)
     return;
 
   QUEUE_INSERT_TAIL(&w->loop->wq, &w->wq);
