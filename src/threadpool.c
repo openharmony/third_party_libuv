@@ -305,7 +305,13 @@ static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
 
   w->work = uv__cancelled;
   uv_mutex_lock(&loop->wq_mutex);
+#ifndef USE_FFRT
   QUEUE_INSERT_TAIL(&loop->wq, &w->wq);
+#else
+  uv__loop_internal_fields_t* lfields = uv__get_internal_fields(w->loop);
+  int qos = (ffrt_qos_t)(intptr_t)req->reserved[0];
+  QUEUE_INSERT_TAIL(&(lfields->wq_sub[qos]), &w->wq);
+#endif
   uv_async_send(&loop->wq_async);
   uv_mutex_unlock(&loop->wq_mutex);
 
@@ -322,7 +328,18 @@ void uv__work_done(uv_async_t* handle) {
 
   loop = container_of(handle, uv_loop_t, wq_async);
   uv_mutex_lock(&loop->wq_mutex);
+#ifndef USE_FFRT
   QUEUE_MOVE(&loop->wq, &wq);
+#else
+  uv__loop_internal_fields_t* lfields = uv__get_internal_fields(loop);
+  int i;
+  QUEUE_INIT(&wq);
+  for (i = 3; i >= 0; i--) {
+    if (!QUEUE_EMPTY(&lfields->wq_sub[i])) {
+      QUEUE_APPEND(&lfields->wq_sub[i], &wq);
+    }
+  }
+#endif
   uv_mutex_unlock(&loop->wq_mutex);
 
   while (!QUEUE_EMPTY(&wq)) {
@@ -357,21 +374,25 @@ static void uv__queue_done(struct uv__work* w, int err) {
 
 
 #ifdef USE_FFRT
-void uv__ffrt_work(ffrt_executor_task_t* data)
+void uv__ffrt_work(ffrt_executor_task_t* data, ffrt_qos_t qos)
 {
   struct uv__work* w = (struct uv__work *)data;
   w->work(w);
+  uv__loop_internal_fields_t* lfields = uv__get_internal_fields(w->loop);
+
+  if (&lfields->wq_sub[qos][0] == NULL || &lfields->wq_sub[qos][1] == NULL)
+    return;
 
   uv_mutex_lock(&w->loop->wq_mutex);
   w->work = NULL; /* Signal uv_cancel() that the work req is done executing. */
-  QUEUE_INSERT_TAIL(&w->loop->wq, &w->wq);
+  QUEUE_INSERT_TAIL(&(lfields->wq_sub[qos]), &w->wq);
   uv_async_send(&w->loop->wq_async);
   uv_mutex_unlock(&w->loop->wq_mutex);
 }
 
 static void init_once(void)
 {
-  ffrt_executor_task_register_func(uv__ffrt_work, "uv");
+  ffrt_executor_task_register_func(uv__ffrt_work, ffrt_uv_task);
 }
 
 
