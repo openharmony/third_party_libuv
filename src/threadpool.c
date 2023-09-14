@@ -362,12 +362,11 @@ void uv__ffrt_work(ffrt_executor_task_t* data)
   struct uv__work* w = (struct uv__work *)data;
   w->work(w);
 
-  uv_mutex_lock(&w->loop->wq_mutex);
-  w->work = NULL; /* Signal uv_cancel() that the work req is done executing. */
-
   if (&w->loop->wq[0] == NULL || &w->loop->wq[1] == NULL)
     return;
 
+  uv_mutex_lock(&w->loop->wq_mutex);
+  w->work = NULL; /* Signal uv_cancel() that the work req is done executing. */
   QUEUE_INSERT_TAIL(&w->loop->wq, &w->wq);
   uv_async_send(&w->loop->wq_async);
   uv_mutex_unlock(&w->loop->wq_mutex);
