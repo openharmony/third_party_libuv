@@ -48,6 +48,13 @@ int uv_loop_init(uv_loop_t* loop) {
 
   heap_init((struct heap*) &loop->timer_heap);
   QUEUE_INIT(&loop->wq);
+#ifdef USE_FFRT
+  uv__loop_internal_fields_t* lfields_qos = uv__get_internal_fields(loop);
+  QUEUE_INIT(&(lfields_qos->wq_sub[uv_qos_background]));
+  QUEUE_INIT(&(lfields_qos->wq_sub[uv_qos_utility]));
+  QUEUE_INIT(&(lfields_qos->wq_sub[uv_qos_default]));
+  QUEUE_INIT(&(lfields_qos->wq_sub[uv_qos_user_initiated]));
+#endif
   QUEUE_INIT(&loop->idle_handles);
   QUEUE_INIT(&loop->async_handles);
   QUEUE_INIT(&loop->check_handles);
@@ -180,7 +187,15 @@ void uv__loop_close(uv_loop_t* loop) {
   }
 
   uv_mutex_lock(&loop->wq_mutex);
+#ifndef USE_FFRT
   assert(QUEUE_EMPTY(&loop->wq) && "thread pool work queue not empty!");
+#else
+  uv__loop_internal_fields_t* lfields_qos = uv__get_internal_fields(loop);
+  assert(QUEUE_EMPTY(&(lfields_qos->wq_sub[uv_qos_background])) && "thread pool work queue qos_background not empty!");
+  assert(QUEUE_EMPTY(&(lfields_qos->wq_sub[uv_qos_utility])) && "thread pool work queue qos_utility not empty!");
+  assert(QUEUE_EMPTY(&(lfields_qos->wq_sub[uv_qos_default])) && "thread pool work queue qos_default not empty!");
+  assert(QUEUE_EMPTY(&(lfields_qos->wq_sub[uv_qos_user_initiated])) && "thread pool work queue qos_user_initiated not empty!");
+#endif
   assert(!uv__has_active_reqs(loop));
   uv_mutex_unlock(&loop->wq_mutex);
   uv_mutex_destroy(&loop->wq_mutex);
