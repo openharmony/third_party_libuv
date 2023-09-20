@@ -392,6 +392,10 @@ void uv__ffrt_work(ffrt_executor_task_t* data, ffrt_qos_t qos)
 
 static void init_once(void)
 {
+  int i;
+  for (i = 0; i <= (int)uv_qos_user_initiated; i++) {
+    ffrt_set_cpu_worker_max_num((ffrt_qos_t)i, 4);
+  }
   ffrt_executor_task_register_func(uv__ffrt_work, ffrt_uv_task);
 }
 
