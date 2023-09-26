@@ -64,6 +64,14 @@ Note:If the text contains special characters, please escape them according to th
             <policyitem type="compatibility" name="ISC License" path="include/uv/stdint-msvc2008.h" desc="ISC License，BSD-style，不影响兼容性"/>
         </policylist>
         <filefilterlist>
+            <filefilter name="defaultFilter" desc="Files not to check">
+                <filteritem type="filepath" name="docs/src/static/.*.jpg" desc="不使用的文件，且MIT协议，不影响兼容性"/>
+                <filteritem type="filepath" name="docs/src/static/.*.zip" desc="不使用的文件，且MIT协议，不影响兼容性"/>
+                <filteritem type="filepath" name="docs/src/static/.*.plist" desc="不使用的文件，且MIT协议，不影响兼容性"/>
+                <filteritem type="filepath" name="docs/src/static/.*.png" desc="不使用的文件，且MIT协议，不影响兼容性"/>
+                <filteritem type="filepath" name="docs/src/static/.*.ico" desc="不使用的文件，且MIT协议，不影响兼容性"/>
+                <filteritem type="filepath" name="img/banner.png" desc="不使用的文件，且MIT协议，不影响兼容性"/>
+            </filefilter>
             <filefilter name="defaultPolicyFilter" desc="compatibility，license文件头校验策略的过滤条件" >
                 <filteritem type="filepath" name="LICENSE-docs" desc="不使用的文件，且MIT协议，不影响兼容性"/>
                 <filteritem type="filepath" name="docs/src/sphinx-plugins/manpage.py" desc="不使用的文件，且MIT协议，不影响兼容性"/>
