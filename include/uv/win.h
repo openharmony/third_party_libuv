@@ -322,7 +322,10 @@ typedef struct {
   char* errmsg;
 } uv_lib_t;
 
+#define UV_LOOP_MAGIC 0x100B100BU
+
 #define UV_LOOP_PRIVATE_FIELDS                                                \
+  unsigned int magic;                                                         \
     /* The loop's I/O completion port */                                      \
   HANDLE iocp;                                                                \
   /* The current time according to the event loop. in msecs. */               \
