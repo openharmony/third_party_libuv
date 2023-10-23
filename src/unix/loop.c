@@ -109,6 +109,7 @@ int uv_loop_init(uv_loop_t* loop) {
   uv__handle_unref(&loop->wq_async);
   loop->wq_async.flags |= UV_HANDLE_INTERNAL;
 
+  loop->magic = UV_LOOP_MAGIC;
   return 0;
 
 fail_async_init:

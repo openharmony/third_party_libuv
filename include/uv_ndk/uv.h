@@ -1779,7 +1779,9 @@ union uv_any_req {
 #undef XX
 
 
+#define UV_LOOP_MAGIC 0x100B100BU
 struct uv_loop_s {
+  unsigned int magic;
   /* User data - use this for whatever. */
   void* data;
   /* Loop reference counting. */
