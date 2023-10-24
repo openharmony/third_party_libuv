@@ -300,6 +300,7 @@ int uv_loop_init(uv_loop_t* loop) {
   if (err)
     goto fail_async_init;
 
+  loop->magic = UV_LOOP_MAGIC;
   return 0;
 
 fail_async_init:
