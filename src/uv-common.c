@@ -32,9 +32,11 @@
 
 #if defined(_WIN32)
 # include <malloc.h> /* malloc */
+# include "win/internal.h"
 #else
 # include <net/if.h> /* if_nametoindex */
 # include <sys/un.h> /* AF_UNIX, sockaddr_un */
+# include "unix/internal.h"
 #endif
 
 

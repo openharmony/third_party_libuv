@@ -23,6 +23,8 @@
 
 #if !defined(_WIN32)
 # include "unix/internal.h"
+#else
+# include "win/internal.h"
 #endif
 
 #include <stdlib.h>

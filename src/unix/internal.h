@@ -33,6 +33,8 @@
 #include <errno.h>
 #include <sys/socket.h>
 
+#define UV_LOOP_MAGIC 0x100B100BU
+
 #if defined(__STRICT_ANSI__)
 # define inline __inline
 #endif
