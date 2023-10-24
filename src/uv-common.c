@@ -792,17 +792,9 @@ uv_loop_t* uv_default_loop(void) {
 uv_loop_t* uv_loop_new(void) {
   uv_loop_t* loop;
 
-retry:
   loop = uv__malloc(sizeof(*loop));
   if (loop == NULL)
     return NULL;
-
-  /* we don't want to reuse deleted uv_loop */
-  if (loop->magic == ~UV_LOOP_MAGIC) {
-    loop->magic = 0;
-    uv__free(loop);
-    goto retry;
-  }
 
   if (uv_loop_init(loop)) {
     uv__free(loop);
