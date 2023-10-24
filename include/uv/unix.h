@@ -218,8 +218,6 @@ typedef struct {
   char* errmsg;
 } uv_lib_t;
 
-#define UV_LOOP_MAGIC 0x100B100BU
-
 #define UV_LOOP_PRIVATE_FIELDS                                                \
   unsigned int magic;                                                         \
   unsigned long flags;                                                        \
