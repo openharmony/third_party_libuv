@@ -29,6 +29,8 @@
 #include "winapi.h"
 #include "winsock.h"
 
+#define UV_LOOP_MAGIC 0x700B700BU
+
 #ifdef _MSC_VER
 # define INLINE __inline
 # define UV_THREAD_LOCAL __declspec( thread )

@@ -23,6 +23,8 @@
 
 #if !defined(_WIN32)
 # include "unix/internal.h"
+#else
+# include "win/internal.h"
 #endif
 
 #include <stdlib.h>
@@ -374,14 +376,41 @@ static void uv__queue_done(struct uv__work* w, int err) {
 
 
 #ifdef USE_FFRT
+#ifdef _GNU_SOURCE
+#include <dlfcn.h>
+#endif
+void uv__ffrt_work_check(struct uv__work* w)
+{
+  if (w->loop->magic == UV_LOOP_MAGIC)
+    return;
+
+#ifdef _GNU_SOURCE
+  void *sym = dlsym(RTLD_DEFAULT, "GetLastFatalMessage");
+  if (sym) {
+    uv_work_t* req;
+    req = container_of(w, uv_work_t, work_req);
+    Dl_info wInfo = {0}, awInfo = {0};
+    dladdr(req->work_cb, &wInfo);
+    dladdr(req->after_work_cb, &awInfo);
+    sprintf((*(char *(*)(void))sym)(),
+      "bad uv_loop(%p): magic=%x, current work_cb=<%s+%#tx> after_work_cb=<%s+%#tx>",
+      w->loop, w->loop->magic, wInfo.dli_fname, (void*)req->work_cb - wInfo.dli_fbase,
+      awInfo.dli_fname, (void*)req->after_work_cb - awInfo.dli_fbase);
+  }
+#endif
+  abort();
+}
+#endif
+
+
+#ifdef USE_FFRT
 void uv__ffrt_work(ffrt_executor_task_t* data, ffrt_qos_t qos)
 {
   struct uv__work* w = (struct uv__work *)data;
   w->work(w);
   uv__loop_internal_fields_t* lfields = uv__get_internal_fields(w->loop);
 
-  if (&lfields->wq_sub[qos][0] == NULL || &lfields->wq_sub[qos][1] == NULL)
-    return;
+  uv__ffrt_work_check(w);
 
   uv_mutex_lock(&w->loop->wq_mutex);
   w->work = NULL; /* Signal uv_cancel() that the work req is done executing. */
