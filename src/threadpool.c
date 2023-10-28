@@ -375,12 +375,27 @@ static void uv__queue_done(struct uv__work* w, int err) {
 }
 
 
+#define UV_LOG(level, fmt, ...) do {                              \
+if (HiLogPrint)                                                   \
+  HiLogPrint(3, level, 0xD003900, "UV", fmt, ##__VA_ARGS__);      \
+} while (0)
+#define UV_LOGI(fmt, ...) UV_LOG(4, fmt, ##__VA_ARGS__)
+#define UV_LOGE(fmt, ...) UV_LOG(6, fmt, ##__VA_ARGS__)
+
+
+static int (*HiLogPrint)(int, int, unsigned int, const char*, const char*, ...);
 static uv_once_t g_closed_uv_loop_rwlock_once = UV_ONCE_INIT;
 static uv_rwlock_t g_closed_uv_loop_rwlock;
 
 
-void init_closed_uv_loop_rwlock_once(void) {
+#ifdef _GNU_SOURCE
+#include <dlfcn.h>
+#endif
+static void init_closed_uv_loop_rwlock_once(void) {
   uv_rwlock_init(&g_closed_uv_loop_rwlock);
+#ifdef _GNU_SOURCE
+  HiLogPrint = (int (*)(int, int, unsigned int, const char*, const char*, ...))dlsym(RTLD_DEFAULT, "HiLogPrint");
+#endif
 }
 
 
@@ -389,6 +404,7 @@ void on_uv_loop_close(uv_loop_t* loop) {
   uv_rwlock_wrlock(&g_closed_uv_loop_rwlock);
   loop->magic = ~UV_LOOP_MAGIC;
   uv_rwlock_wrunlock(&g_closed_uv_loop_rwlock);
+  UV_LOGI("uv_loop(%p) closed", loop);
 }
 
 
@@ -407,6 +423,8 @@ void uv__ffrt_work(ffrt_executor_task_t* data, ffrt_qos_t qos)
       || !lfields->wq_sub[qos][0]
       || !lfields->wq_sub[qos][1]) {
     uv_rwlock_rdunlock(&g_closed_uv_loop_rwlock);
+    uv_work_t* req = container_of(w, uv_work_t, work_req);
+    UV_LOGE("uv_loop(%p:%#x) in task(%p:%p) is invalid", w->loop, w->loop->magic, req->work_cb, req->after_work_cb);
     return;
   }
 
