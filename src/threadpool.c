@@ -375,32 +375,21 @@ static void uv__queue_done(struct uv__work* w, int err) {
 }
 
 
-#ifdef USE_FFRT
-#ifdef _GNU_SOURCE
-#include <dlfcn.h>
-#endif
-void uv__ffrt_work_check(struct uv__work* w)
-{
-  if (w->loop->magic == UV_LOOP_MAGIC)
-    return;
+static uv_once_t g_closed_uv_loop_rwlock_once = UV_ONCE_INIT;
+static uv_rwlock_t g_closed_uv_loop_rwlock;
 
-#ifdef _GNU_SOURCE
-  void *sym = dlsym(RTLD_DEFAULT, "GetLastFatalMessage");
-  if (sym) {
-    uv_work_t* req;
-    req = container_of(w, uv_work_t, work_req);
-    Dl_info wInfo = {0}, awInfo = {0};
-    dladdr(req->work_cb, &wInfo);
-    dladdr(req->after_work_cb, &awInfo);
-    sprintf((*(char *(*)(void))sym)(),
-      "bad uv_loop(%p): magic=%x, current work_cb=<%s+%#tx> after_work_cb=<%s+%#tx>",
-      w->loop, w->loop->magic, wInfo.dli_fname, (void*)req->work_cb - wInfo.dli_fbase,
-      awInfo.dli_fname, (void*)req->after_work_cb - awInfo.dli_fbase);
-  }
-#endif
-  abort();
+
+void init_closed_uv_loop_rwlock_once(void) {
+  uv_rwlock_init(&g_closed_uv_loop_rwlock);
 }
-#endif
+
+
+void on_uv_loop_close(uv_loop_t* loop) {
+  uv_once(&g_closed_uv_loop_rwlock_once, init_closed_uv_loop_rwlock_once);
+  uv_rwlock_wrlock(&g_closed_uv_loop_rwlock);
+  loop->magic = ~UV_LOOP_MAGIC;
+  uv_rwlock_wrunlock(&g_closed_uv_loop_rwlock);
+}
 
 
 #ifdef USE_FFRT
@@ -410,13 +399,23 @@ void uv__ffrt_work(ffrt_executor_task_t* data, ffrt_qos_t qos)
   w->work(w);
   uv__loop_internal_fields_t* lfields = uv__get_internal_fields(w->loop);
 
-  uv__ffrt_work_check(w);
+  uv_once(&g_closed_uv_loop_rwlock_once, init_closed_uv_loop_rwlock_once);
+  uv_rwlock_rdlock(&g_closed_uv_loop_rwlock);
+  if (w->loop->magic != UV_LOOP_MAGIC
+      || !lfields
+      || qos >= ARRAY_SIZE(lfields->wq_sub)
+      || !lfields->wq_sub[qos][0]
+      || !lfields->wq_sub[qos][1]) {
+    uv_rwlock_rdunlock(&g_closed_uv_loop_rwlock);
+    return;
+  }
 
   uv_mutex_lock(&w->loop->wq_mutex);
   w->work = NULL; /* Signal uv_cancel() that the work req is done executing. */
   QUEUE_INSERT_TAIL(&(lfields->wq_sub[qos]), &w->wq);
   uv_async_send(&w->loop->wq_async);
   uv_mutex_unlock(&w->loop->wq_mutex);
+  uv_rwlock_rdunlock(&g_closed_uv_loop_rwlock);
 }
 
 static void init_once(void)
