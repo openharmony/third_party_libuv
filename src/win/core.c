@@ -373,6 +373,7 @@ void uv__loop_close(uv_loop_t* loop) {
   loop->internal_fields = NULL;
 
   CloseHandle(loop->iocp);
+  loop->magic = ~UV_LOOP_MAGIC;
 }
 
 
