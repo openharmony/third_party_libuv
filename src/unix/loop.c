@@ -221,6 +221,7 @@ void uv__loop_close(uv_loop_t* loop) {
   uv_mutex_destroy(&lfields->loop_metrics.lock);
   uv__free(lfields);
   loop->internal_fields = NULL;
+  loop->magic = ~UV_LOOP_MAGIC;
 }
 
 
