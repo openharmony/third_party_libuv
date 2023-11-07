@@ -13,4 +13,5 @@
 
 declare_args() {
   use_ffrt = false
+  enable_uv_statisic = false
 }

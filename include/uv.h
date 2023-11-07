@@ -1095,6 +1095,21 @@ struct uv_work_s {
   UV_WORK_PRIVATE_FIELDS
 };
 
+
+typedef struct uv_worker_info_s uv_worker_info_t;
+
+struct uv_worker_info_s {
+  uint64_t queue_time;
+  void* builtin_return_address[3];
+  char state[20];
+  uint64_t execute_start_time;
+  uint64_t execute_end_time;
+  uint64_t done_start_time;
+  uint64_t done_end_time;
+};
+
+UV_EXTERN uv_worker_info_t* uv_dump_work_queue(int* size);
+
 UV_EXTERN int uv_queue_work(uv_loop_t* loop,
                             uv_work_t* req,
                             uv_work_cb work_cb,
