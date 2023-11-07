@@ -172,8 +172,14 @@ if (defined(ohos_lite)) {
         "-D_GNU_SOURCE",
         "-D_POSIX_C_SOURCE=200112",
       ]
+      defines = []
       if (use_ffrt && is_ohos) {
-        defines = [ "USE_FFRT" ]
+        defines += [ "USE_FFRT" ]
+      }
+      if (enable_uv_statisic && is_ohos) {
+        defines += [ "UV_STATISTIC" ]
+        cflags +=
+            [ "-Wno-frame-address" ]  # for use of __builtin_return_address
       }
     } else if (is_mingw || is_win) {
       cflags += [
