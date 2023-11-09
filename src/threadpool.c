@@ -36,6 +36,18 @@
 
 #define MAX_THREADPOOL_SIZE 1024
 
+#define UV_LOG(level, fmt, ...) do {                                                          \
+  if (HiLogPrint)                                                                             \
+    HiLogPrint(3, level, 0xD003900, "UV", "[%s:%d] " fmt, __func__, __LINE__, ##__VA_ARGS__); \
+  else                                                                                        \
+    fprintf(stderr, "UV:[%s:%d] " fmt "\n", __func__, __LINE__, ##__VA_ARGS__);               \
+} while (0)
+#define UV_LOGI(fmt, ...) UV_LOG(4, fmt, ##__VA_ARGS__)
+#define UV_LOGE(fmt, ...) UV_LOG(6, fmt, ##__VA_ARGS__)
+
+static int (*HiLogPrint)(int, int, unsigned int, const char*, const char*, ...);
+static uv_rwlock_t g_closed_uv_loop_rwlock;
+
 static uv_cond_t cond;
 static uv_mutex_t mutex;
 static unsigned int idle_threads;
@@ -170,7 +182,7 @@ static void uv__post_statistic_work(struct uv__work *w, enum uv_work_state state
 }
 
 
-void init_work_dump_queue()
+static void init_work_dump_queue()
 {
   if (uv_mutex_init(&dump_queue_mutex))
     abort();
@@ -273,6 +285,26 @@ uv_worker_info_t* uv_dump_work_queue(int* size) {
 #endif
 }
 #endif
+
+
+#ifdef _GNU_SOURCE
+#include <dlfcn.h>
+#endif
+static void init_closed_uv_loop_rwlock_once(void) {
+  uv_rwlock_init(&g_closed_uv_loop_rwlock);
+#ifdef _GNU_SOURCE
+  HiLogPrint = (int (*)(int, int, unsigned int, const char*, const char*, ...))dlsym(RTLD_DEFAULT, "HiLogPrint");
+#endif
+}
+
+
+void on_uv_loop_close(uv_loop_t* loop) {
+  uv_rwlock_wrlock(&g_closed_uv_loop_rwlock);
+  loop->magic = ~UV_LOOP_MAGIC;
+  uv_rwlock_wrunlock(&g_closed_uv_loop_rwlock);
+  UV_LOGI("uv_loop(%p) closed", loop);
+}
+
 
 static void uv__cancelled(struct uv__work* w) {
   abort();
@@ -503,6 +535,7 @@ static void init_once(void) {
   if (pthread_atfork(NULL, NULL, &reset_once))
     abort();
 #endif
+  init_closed_uv_loop_rwlock_once();
 #ifdef UV_STATISTIC
   init_work_dump_queue();
 #endif
@@ -527,6 +560,13 @@ void uv__work_submit(uv_loop_t* loop,
 static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
   int cancelled;
 
+  uv_rwlock_rdlock(&g_closed_uv_loop_rwlock);
+  if (w->loop->magic != UV_LOOP_MAGIC) {
+    uv_rwlock_rdunlock(&g_closed_uv_loop_rwlock);
+    UV_LOGE("uv_loop(%p:%#x) is invalid", w->loop, w->loop->magic);
+    return 0;
+  }
+
 #ifndef USE_FFRT
   uv_mutex_lock(&mutex);
   uv_mutex_lock(&w->loop->wq_mutex);
@@ -544,8 +584,10 @@ static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
   uv_mutex_unlock(&w->loop->wq_mutex);
 #endif
 
-  if (!cancelled)
+  if (!cancelled) {
+    uv_rwlock_rdunlock(&g_closed_uv_loop_rwlock);
     return UV_EBUSY;
+  }
 
   w->work = uv__cancelled;
   uv_mutex_lock(&loop->wq_mutex);
@@ -558,6 +600,7 @@ static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
 #endif
   uv_async_send(&loop->wq_async);
   uv_mutex_unlock(&loop->wq_mutex);
+  uv_rwlock_rdunlock(&g_closed_uv_loop_rwlock);
 
   return 0;
 }
@@ -571,6 +614,12 @@ void uv__work_done(uv_async_t* handle) {
   int err;
 
   loop = container_of(handle, uv_loop_t, wq_async);
+  uv_rwlock_rdlock(&g_closed_uv_loop_rwlock);
+  if (loop->magic != UV_LOOP_MAGIC) {
+    uv_rwlock_rdunlock(&g_closed_uv_loop_rwlock);
+    UV_LOGE("uv_loop(%p:%#x) is invalid", loop, loop->magic);
+    return;
+  }
   uv_mutex_lock(&loop->wq_mutex);
 #ifndef USE_FFRT
   QUEUE_MOVE(&loop->wq, &wq);
@@ -593,22 +642,24 @@ void uv__work_done(uv_async_t* handle) {
     w = container_of(q, struct uv__work, wq);
     err = (w->work == uv__cancelled) ? UV_ECANCELED : 0;
 #ifdef UV_STATISTIC
-  uv__post_statistic_work(w, DONE_EXECUTING);
-  struct uv__statistic_work* dump_work = (struct uv__statistic_work*)malloc(sizeof(struct uv__statistic_work));
-  if (dump_work == NULL) {
-    return;
-  }
-  dump_work->info = w->info;
-  dump_work->work = uv__update_work_info;
+    uv__post_statistic_work(w, DONE_EXECUTING);
+    struct uv__statistic_work* dump_work = (struct uv__statistic_work*)malloc(sizeof(struct uv__statistic_work));
+    if (dump_work == NULL) {
+      UV_LOGE("malloc(%zu) failed: %d", sizeof(struct uv__statistic_work), errno);
+      break;
+    }
+    dump_work->info = w->info;
+    dump_work->work = uv__update_work_info;
 #endif
     w->done(w, err);
 #ifdef UV_STATISTIC
-  dump_work->time = uv__now_timestamp();
-  dump_work->state = DONE_END;
-  QUEUE_INIT(&dump_work->wq);
-  post_statistic_work(&dump_work->wq);
+    dump_work->time = uv__now_timestamp();
+    dump_work->state = DONE_END;
+    QUEUE_INIT(&dump_work->wq);
+    post_statistic_work(&dump_work->wq);
 #endif
   }
+  uv_rwlock_rdunlock(&g_closed_uv_loop_rwlock);
 }
 
 
@@ -632,39 +683,6 @@ static void uv__queue_done(struct uv__work* w, int err) {
 }
 
 
-#define UV_LOG(level, fmt, ...) do {                              \
-if (HiLogPrint)                                                   \
-  HiLogPrint(3, level, 0xD003900, "UV", fmt, ##__VA_ARGS__);      \
-} while (0)
-#define UV_LOGI(fmt, ...) UV_LOG(4, fmt, ##__VA_ARGS__)
-#define UV_LOGE(fmt, ...) UV_LOG(6, fmt, ##__VA_ARGS__)
-
-
-static int (*HiLogPrint)(int, int, unsigned int, const char*, const char*, ...);
-static uv_once_t g_closed_uv_loop_rwlock_once = UV_ONCE_INIT;
-static uv_rwlock_t g_closed_uv_loop_rwlock;
-
-
-#ifdef _GNU_SOURCE
-#include <dlfcn.h>
-#endif
-static void init_closed_uv_loop_rwlock_once(void) {
-  uv_rwlock_init(&g_closed_uv_loop_rwlock);
-#ifdef _GNU_SOURCE
-  HiLogPrint = (int (*)(int, int, unsigned int, const char*, const char*, ...))dlsym(RTLD_DEFAULT, "HiLogPrint");
-#endif
-}
-
-
-void on_uv_loop_close(uv_loop_t* loop) {
-  uv_once(&g_closed_uv_loop_rwlock_once, init_closed_uv_loop_rwlock_once);
-  uv_rwlock_wrlock(&g_closed_uv_loop_rwlock);
-  loop->magic = ~UV_LOOP_MAGIC;
-  uv_rwlock_wrunlock(&g_closed_uv_loop_rwlock);
-  UV_LOGI("uv_loop(%p) closed", loop);
-}
-
-
 #ifdef USE_FFRT
 void uv__ffrt_work(ffrt_executor_task_t* data, ffrt_qos_t qos)
 {
@@ -678,7 +696,6 @@ void uv__ffrt_work(ffrt_executor_task_t* data, ffrt_qos_t qos)
 #endif
   uv__loop_internal_fields_t* lfields = uv__get_internal_fields(w->loop);
 
-  uv_once(&g_closed_uv_loop_rwlock_once, init_closed_uv_loop_rwlock_once);
   uv_rwlock_rdlock(&g_closed_uv_loop_rwlock);
   if (w->loop->magic != UV_LOOP_MAGIC
       || !lfields
@@ -701,6 +718,7 @@ void uv__ffrt_work(ffrt_executor_task_t* data, ffrt_qos_t qos)
 
 static void init_once(void)
 {
+  init_closed_uv_loop_rwlock_once();
   /* init uv work statics queue */
 #ifdef UV_STATISTIC
   init_work_dump_queue();
