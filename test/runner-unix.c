@@ -109,12 +109,12 @@ int process_start(char* name, char* part, process_info_t* p, int is_helper) {
   args[n++] = NULL;
 
   stdout_file = fopen("/data/local/tmp/test.txt", "w+");
-  stdout_fd = fileno(stdout_file);  
+  stdout_fd = fileno(stdout_file);
   if (!stdout_file) {
     perror("tmpfile");
     return -1;
   }
-  
+
   if (is_helper) {
     if (pipe(pipefd)) {
       perror("pipe");
