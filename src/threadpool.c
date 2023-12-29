@@ -38,13 +38,13 @@
 
 #define UV_LOG(level, fmt, ...) do {                                                          \
   if (HiLogPrint)                                                                             \
-    HiLogPrint(3, level, 0xD003900, "UV", "[%s:%d] " fmt, __func__, __LINE__, ##__VA_ARGS__); \
-  else                                                                                        \
-    fprintf(stderr, "UV:[%s:%d] " fmt "\n", __func__, __LINE__, ##__VA_ARGS__);               \
+    HiLogPrint(3, level, 0xD003900, "UV", "[%{public}s:%{public}d] " fmt, __func__, __LINE__, ##__VA_ARGS__); \
 } while (0)
+#define UV_LOGD(fmt, ...) UV_LOG(3, fmt, ##__VA_ARGS__)
 #define UV_LOGI(fmt, ...) UV_LOG(4, fmt, ##__VA_ARGS__)
 #define UV_LOGE(fmt, ...) UV_LOG(6, fmt, ##__VA_ARGS__)
 
+__attribute__((__format__(os_log, 5, 6)))
 static int (*HiLogPrint)(int, int, unsigned int, const char*, const char*, ...);
 static uv_rwlock_t g_closed_uv_loop_rwlock;
 
@@ -302,7 +302,7 @@ void on_uv_loop_close(uv_loop_t* loop) {
   uv_rwlock_wrlock(&g_closed_uv_loop_rwlock);
   loop->magic = ~UV_LOOP_MAGIC;
   uv_rwlock_wrunlock(&g_closed_uv_loop_rwlock);
-  UV_LOGI("uv_loop(%p) closed", loop);
+  UV_LOGD("uv_loop(%p) closed", loop);
 }
 
 
@@ -563,7 +563,7 @@ static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
   uv_rwlock_rdlock(&g_closed_uv_loop_rwlock);
   if (w->loop->magic != UV_LOOP_MAGIC) {
     uv_rwlock_rdunlock(&g_closed_uv_loop_rwlock);
-    UV_LOGE("uv_loop(%p:%#x) is invalid", w->loop, w->loop->magic);
+    UV_LOGE("uv_loop(%p:%{public}#x) is invalid", w->loop, w->loop->magic);
     return 0;
   }
 
@@ -617,7 +617,7 @@ void uv__work_done(uv_async_t* handle) {
   uv_rwlock_rdlock(&g_closed_uv_loop_rwlock);
   if (loop->magic != UV_LOOP_MAGIC) {
     uv_rwlock_rdunlock(&g_closed_uv_loop_rwlock);
-    UV_LOGE("uv_loop(%p:%#x) is invalid", loop, loop->magic);
+    UV_LOGE("uv_loop(%p:%{public}#x) is invalid", loop, loop->magic);
     return;
   }
   uv_mutex_lock(&loop->wq_mutex);
@@ -645,7 +645,7 @@ void uv__work_done(uv_async_t* handle) {
     uv__post_statistic_work(w, DONE_EXECUTING);
     struct uv__statistic_work* dump_work = (struct uv__statistic_work*)malloc(sizeof(struct uv__statistic_work));
     if (dump_work == NULL) {
-      UV_LOGE("malloc(%zu) failed: %d", sizeof(struct uv__statistic_work), errno);
+      UV_LOGE("malloc(%{public}zu) failed: %{public}d", sizeof(struct uv__statistic_work), errno);
       break;
     }
     dump_work->info = w->info;
@@ -704,7 +704,7 @@ void uv__ffrt_work(ffrt_executor_task_t* data, ffrt_qos_t qos)
       || !lfields->wq_sub[qos][1]) {
     uv_rwlock_rdunlock(&g_closed_uv_loop_rwlock);
     uv_work_t* req = container_of(w, uv_work_t, work_req);
-    UV_LOGE("uv_loop(%p:%#x) in task(%p:%p) is invalid", w->loop, w->loop->magic, req->work_cb, req->after_work_cb);
+    UV_LOGE("uv_loop(%p:%{public}#x) in task(%p:%p) is invalid", w->loop, w->loop->magic, req->work_cb, req->after_work_cb);
     return;
   }
 
