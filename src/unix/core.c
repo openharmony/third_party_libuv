@@ -379,10 +379,21 @@ int uv_loop_alive(const uv_loop_t* loop) {
 }
 
 
+void rdlock_closed_uv_loop_rwlock(void);
+void rdunlock_closed_uv_loop_rwlock(void);
+int is_uv_loop_good_magic(const uv_loop_t* loop);
+
+
 int uv_run(uv_loop_t* loop, uv_run_mode mode) {
   int timeout;
   int r;
   int can_sleep;
+
+  rdlock_closed_uv_loop_rwlock();
+  if (!is_uv_loop_good_magic(loop)) {
+    rdunlock_closed_uv_loop_rwlock();
+    return 0;
+  }
 
   r = uv__loop_alive(loop);
   if (!r)
@@ -444,6 +455,7 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
   if (loop->stop_flag != 0)
     loop->stop_flag = 0;
 
+  rdunlock_closed_uv_loop_rwlock();
   return r;
 }
 
