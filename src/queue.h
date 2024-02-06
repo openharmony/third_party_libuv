@@ -37,7 +37,9 @@ typedef void *QUEUE[2];
   for ((q) = QUEUE_NEXT(h); (q) != (h); (q) = QUEUE_NEXT(q))
 
 #define QUEUE_EMPTY(q)                                                        \
-  ((const QUEUE *) (q) == (const QUEUE *) QUEUE_NEXT(q))
+  ((const QUEUE *) (q) == (const QUEUE *) QUEUE_NEXT(q) ||                    \
+   (const QUEUE *) (q) != (const QUEUE *) QUEUE_PREV(QUEUE_NEXT(q)))
+/* treat broken queue as empty */
 
 #define QUEUE_HEAD(q)                                                         \
   (QUEUE_NEXT(q))
