@@ -298,11 +298,33 @@ static void init_closed_uv_loop_rwlock_once(void) {
 }
 
 
+void rdlock_closed_uv_loop_rwlock(void) {
+  uv_rwlock_rdlock(&g_closed_uv_loop_rwlock);
+}
+
+
+void rdunlock_closed_uv_loop_rwlock(void) {
+  uv_rwlock_rdunlock(&g_closed_uv_loop_rwlock);
+}
+
+
+int is_uv_loop_good_magic(const uv_loop_t* loop) {
+  if (loop->magic == UV_LOOP_MAGIC) {
+    return 1;
+  }
+  UV_LOGE("uv_loop(%{public}zu:%{public}#x) is invalid", (size_t)loop, loop->magic);
+  return 0;
+}
+
+
 void on_uv_loop_close(uv_loop_t* loop) {
+  time_t t1, t2;
+  time(&t1);
   uv_rwlock_wrlock(&g_closed_uv_loop_rwlock);
   loop->magic = ~UV_LOOP_MAGIC;
   uv_rwlock_wrunlock(&g_closed_uv_loop_rwlock);
-  UV_LOGD("uv_loop(%p) closed", loop);
+  time(&t2);
+  UV_LOGI("uv_loop(%{public}zu) closed in %zds", (size_t)loop, (ssize_t)(t2 - t1));
 }
 
 
@@ -560,10 +582,9 @@ void uv__work_submit(uv_loop_t* loop,
 static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
   int cancelled;
 
-  uv_rwlock_rdlock(&g_closed_uv_loop_rwlock);
-  if (w->loop->magic != UV_LOOP_MAGIC) {
-    uv_rwlock_rdunlock(&g_closed_uv_loop_rwlock);
-    UV_LOGE("uv_loop(%p:%{public}#x) is invalid", w->loop, w->loop->magic);
+  rdlock_closed_uv_loop_rwlock();
+  if (!is_uv_loop_good_magic(w->loop)) {
+    rdunlock_closed_uv_loop_rwlock();
     return 0;
   }
 
@@ -585,7 +606,7 @@ static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
 #endif
 
   if (!cancelled) {
-    uv_rwlock_rdunlock(&g_closed_uv_loop_rwlock);
+    rdunlock_closed_uv_loop_rwlock();
     return UV_EBUSY;
   }
 
@@ -600,7 +621,7 @@ static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
 #endif
   uv_async_send(&loop->wq_async);
   uv_mutex_unlock(&loop->wq_mutex);
-  uv_rwlock_rdunlock(&g_closed_uv_loop_rwlock);
+  rdunlock_closed_uv_loop_rwlock();
 
   return 0;
 }
@@ -614,10 +635,9 @@ void uv__work_done(uv_async_t* handle) {
   int err;
 
   loop = container_of(handle, uv_loop_t, wq_async);
-  uv_rwlock_rdlock(&g_closed_uv_loop_rwlock);
-  if (loop->magic != UV_LOOP_MAGIC) {
-    uv_rwlock_rdunlock(&g_closed_uv_loop_rwlock);
-    UV_LOGE("uv_loop(%p:%{public}#x) is invalid", loop, loop->magic);
+  rdlock_closed_uv_loop_rwlock();
+  if (!is_uv_loop_good_magic(loop)) {
+    rdunlock_closed_uv_loop_rwlock();
     return;
   }
   uv_mutex_lock(&loop->wq_mutex);
@@ -645,7 +665,7 @@ void uv__work_done(uv_async_t* handle) {
     uv__post_statistic_work(w, DONE_EXECUTING);
     struct uv__statistic_work* dump_work = (struct uv__statistic_work*)malloc(sizeof(struct uv__statistic_work));
     if (dump_work == NULL) {
-      UV_LOGE("malloc(%{public}zu) failed: %{public}d", sizeof(struct uv__statistic_work), errno);
+      UV_LOGE("malloc(%{public}zu) failed: %{public}s", sizeof(struct uv__statistic_work), strerror(errno));
       break;
     }
     dump_work->info = w->info;
@@ -659,7 +679,7 @@ void uv__work_done(uv_async_t* handle) {
     post_statistic_work(&dump_work->wq);
 #endif
   }
-  uv_rwlock_rdunlock(&g_closed_uv_loop_rwlock);
+  rdunlock_closed_uv_loop_rwlock();
 }
 
 
@@ -696,15 +716,16 @@ void uv__ffrt_work(ffrt_executor_task_t* data, ffrt_qos_t qos)
 #endif
   uv__loop_internal_fields_t* lfields = uv__get_internal_fields(w->loop);
 
-  uv_rwlock_rdlock(&g_closed_uv_loop_rwlock);
+  rdlock_closed_uv_loop_rwlock();
   if (w->loop->magic != UV_LOOP_MAGIC
       || !lfields
       || qos >= ARRAY_SIZE(lfields->wq_sub)
       || !lfields->wq_sub[qos][0]
       || !lfields->wq_sub[qos][1]) {
-    uv_rwlock_rdunlock(&g_closed_uv_loop_rwlock);
+    rdunlock_closed_uv_loop_rwlock();
     uv_work_t* req = container_of(w, uv_work_t, work_req);
-    UV_LOGE("uv_loop(%p:%{public}#x) in task(%p:%p) is invalid", w->loop, w->loop->magic, req->work_cb, req->after_work_cb);
+    UV_LOGE("uv_loop(%{public}zu:%{public}#x) in task(%p:%p) is invalid",
+            (size_t)w->loop, w->loop->magic, req->work_cb, req->after_work_cb);
     return;
   }
 
@@ -713,7 +734,7 @@ void uv__ffrt_work(ffrt_executor_task_t* data, ffrt_qos_t qos)
   QUEUE_INSERT_TAIL(&(lfields->wq_sub[qos]), &w->wq);
   uv_async_send(&w->loop->wq_async);
   uv_mutex_unlock(&w->loop->wq_mutex);
-  uv_rwlock_rdunlock(&g_closed_uv_loop_rwlock);
+  rdunlock_closed_uv_loop_rwlock();
 }
 
 static void init_once(void)
