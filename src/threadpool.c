@@ -324,7 +324,7 @@ void on_uv_loop_close(uv_loop_t* loop) {
   loop->magic = ~UV_LOOP_MAGIC;
   uv_rwlock_wrunlock(&g_closed_uv_loop_rwlock);
   time(&t2);
-  UV_LOGI("uv_loop(%{public}zu) closed in %zds", (size_t)loop, (ssize_t)(t2 - t1));
+  UV_LOGI("uv_loop(%{public}zu) closed in %{public}zds", (size_t)loop, (ssize_t)(t2 - t1));
 }
 
 
