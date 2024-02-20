@@ -20,6 +20,8 @@
  */
 
 #include "uv-common.h"
+#include "uv_log.h"
+#include "uv_trace.h"
 
 #if !defined(_WIN32)
 # include "unix/internal.h"
@@ -36,16 +38,6 @@
 
 #define MAX_THREADPOOL_SIZE 1024
 
-#define UV_LOG(level, fmt, ...) do {                                                          \
-  if (HiLogPrint)                                                                             \
-    HiLogPrint(3, level, 0xD003900, "UV", "[%{public}s:%{public}d] " fmt, __func__, __LINE__, ##__VA_ARGS__); \
-} while (0)
-#define UV_LOGD(fmt, ...) UV_LOG(3, fmt, ##__VA_ARGS__)
-#define UV_LOGI(fmt, ...) UV_LOG(4, fmt, ##__VA_ARGS__)
-#define UV_LOGE(fmt, ...) UV_LOG(6, fmt, ##__VA_ARGS__)
-
-__attribute__((__format__(os_log, 5, 6)))
-static int (*HiLogPrint)(int, int, unsigned int, const char*, const char*, ...);
 static uv_rwlock_t g_closed_uv_loop_rwlock;
 
 static uv_cond_t cond;
@@ -287,14 +279,8 @@ uv_worker_info_t* uv_dump_work_queue(int* size) {
 #endif
 
 
-#ifdef _GNU_SOURCE
-#include <dlfcn.h>
-#endif
 static void init_closed_uv_loop_rwlock_once(void) {
   uv_rwlock_init(&g_closed_uv_loop_rwlock);
-#ifdef _GNU_SOURCE
-  HiLogPrint = (int (*)(int, int, unsigned int, const char*, const char*, ...))dlsym(RTLD_DEFAULT, "HiLogPrint");
-#endif
 }
 
 
@@ -633,6 +619,9 @@ void uv__work_done(uv_async_t* handle) {
   QUEUE* q;
   QUEUE wq;
   int err;
+  char traceName[25] = "TaskNumber_";
+  char str[10];
+  int cnt = 0;
 
   loop = container_of(handle, uv_loop_t, wq_async);
   rdlock_closed_uv_loop_rwlock();
@@ -654,7 +643,14 @@ void uv__work_done(uv_async_t* handle) {
   }
 #endif
   uv_mutex_unlock(&loop->wq_mutex);
+  cnt = loop->active_reqs.count;
+  if (cnt > 50) {
+      UV_LOGW("The number of task is too much, task number is %{public}d", cnt);
+  }
+  snprintf(str, sizeof(str), "%d", cnt);
+  strcat(traceName, str);
 
+  uv_start_trace(UV_TRACE_TAG, traceName);
   while (!QUEUE_EMPTY(&wq)) {
     q = QUEUE_HEAD(&wq);
     QUEUE_REMOVE(q);
@@ -679,6 +675,7 @@ void uv__work_done(uv_async_t* handle) {
     post_statistic_work(&dump_work->wq);
 #endif
   }
+  uv_end_trace(UV_TRACE_TAG);
   rdunlock_closed_uv_loop_rwlock();
 }
 
