@@ -36,6 +36,13 @@
                     "header_files": [],
                     "header_base": "//third_party/libuv/include"
                   }
+                },
+                {
+                  "name": "//third_party/libuv:uv_static",
+                  "header": {
+                    "header_files": [],
+                    "header_base": "//third_party/libuv/include"
+                  }
                 }
             ],
             "test": []
