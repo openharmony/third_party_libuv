@@ -223,7 +223,7 @@ if (defined(ohos_lite)) {
   ohos_source_set("libuv_source") {
     configs = [ ":libuv_config" ]
     sources = common_source
-
+    external_deps = []
     if (is_mac || (defined(is_ios) && is_ios)) {
       sources += nonwin_srcs + [
                    "src/unix/bsd-ifaddrs.c",
@@ -233,6 +233,8 @@ if (defined(ohos_lite)) {
                    "src/unix/darwin.c",
                    "src/unix/fsevents.c",
                    "src/unix/os390-proctitle.c",
+                   "src/unix/log_unix.c",
+                   "src/unix/trace_unix.c",
                  ]
       sources -= [ "src/unix/epoll.c" ]
     } else if (is_mingw || is_win) {
@@ -247,6 +249,7 @@ if (defined(ohos_lite)) {
         "src/win/getaddrinfo.c",
         "src/win/getnameinfo.c",
         "src/win/handle.c",
+        "src/win/log_win.c",
         "src/win/loop-watcher.c",
         "src/win/pipe.c",
         "src/win/poll.c",
@@ -257,6 +260,7 @@ if (defined(ohos_lite)) {
         "src/win/stream.c",
         "src/win/tcp.c",
         "src/win/thread.c",
+        "src/win/trace_win.c",
         "src/win/tty.c",
         "src/win/udp.c",
         "src/win/util.c",
@@ -276,7 +280,17 @@ if (defined(ohos_lite)) {
                    "src/unix/proctitle.c",
                  ]
       if (use_ffrt) {
-        external_deps = [ "ffrt:libffrt" ]
+        external_deps += [ "ffrt:libffrt" ]
+      }
+      if (is_ohos) {
+        sources += [
+          "src/unix/ohos/log_ohos.c",
+          "src/unix/ohos/trace_ohos.c",
+        ]
+        external_deps += [
+          "hilog:libhilog",
+          "hitrace:hitrace_meter",
+        ]
       }
     } else if (is_linux) {
       sources += nonwin_srcs + [
@@ -287,6 +301,8 @@ if (defined(ohos_lite)) {
                    "src/unix/random-getrandom.c",
                    "src/unix/random-sysctl-linux.c",
                    "src/unix/proctitle.c",
+                   "src/unix/log_unix.c",
+                   "src/unix/trace_unix.c",
                  ]
     } else {
       sources += nonwin_srcs + [

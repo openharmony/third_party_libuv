@@ -23,7 +23,9 @@
         "ram": "0",
         "deps": {
             "components": [
-                "ffrt"
+                "ffrt",
+                "hilog",
+                "hitrace"
             ],
             "third_party": []
         },
