@@ -178,6 +178,11 @@ if (defined(ohos_lite)) {
       if (use_ffrt && is_ohos) {
         defines += [ "USE_FFRT" ]
       }
+
+      if (enable_async_stack && is_ohos) {
+        defines += [ "ASYNC_STACKTRACE" ]
+      }
+
       if (enable_uv_statisic && is_ohos) {
         defines += [ "UV_STATISTIC" ]
         cflags +=
@@ -291,6 +296,10 @@ if (defined(ohos_lite)) {
           "hilog:libhilog",
           "hitrace:hitrace_meter",
         ]
+      }
+
+      if (is_ohos && enable_async_stack) {
+        external_deps += [ "faultloggerd:libasync_stack" ]
       }
     } else if (is_linux) {
       sources += nonwin_srcs + [

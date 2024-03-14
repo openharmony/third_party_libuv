@@ -51,6 +51,10 @@ static QUEUE wq;
 static QUEUE run_slow_work_message;
 static QUEUE slow_io_pending_wq;
 
+#ifdef ASYNC_STACKTRACE
+#include "async_stack.h"
+#endif
+
 #ifdef UV_STATISTIC
 #define MAX_DUMP_QUEUE_SIZE 200
 static uv_mutex_t dump_queue_mutex;
@@ -398,6 +402,10 @@ static void worker(void* arg) {
 #ifdef UV_STATISTIC
     uv__post_statistic_work(w, WORK_EXECUTING);
 #endif
+#ifdef ASYNC_STACKTRACE
+    uv_work_t* req = container_of(w, uv_work_t, work_req);
+    SetStackId((uint64_t)req->reserved[3]);
+#endif
     w->work(w);
 #ifdef UV_STATISTIC
     uv__post_statistic_work(w, WORK_END);
@@ -667,6 +675,10 @@ void uv__work_done(uv_async_t* handle) {
     dump_work->info = w->info;
     dump_work->work = uv__update_work_info;
 #endif
+#ifdef ASYNC_STACKTRACE
+    uv_work_t* req = container_of(w, uv_work_t, work_req);
+    SetStackId((uint64_t)req->reserved[3]);
+#endif
     w->done(w, err);
 #ifdef UV_STATISTIC
     dump_work->time = uv__now_timestamp();
@@ -706,6 +718,10 @@ void uv__ffrt_work(ffrt_executor_task_t* data, ffrt_qos_t qos)
   struct uv__work* w = (struct uv__work *)data;
 #ifdef UV_STATISTIC
   uv__post_statistic_work(w, WORK_EXECUTING);
+#endif
+#ifdef ASYNC_STACKTRACE
+  uv_work_t* req = container_of(w, uv_work_t, work_req);
+  SetStackId((uint64_t)req->reserved[3]);
 #endif
   w->work(w);
 #ifdef UV_STATISTIC
@@ -825,6 +841,9 @@ int uv_queue_work(uv_loop_t* loop,
   info->builtin_return_address[1] = __builtin_return_address(1);
   info->builtin_return_address[2] = __builtin_return_address(2);
   (req->work_req).info = info;
+#endif
+#ifdef ASYNC_STACKTRACE
+  req->reserved[3] = (void*)CollectAsyncStack();
 #endif
   uv__work_submit(loop,
 #ifdef USE_FFRT
