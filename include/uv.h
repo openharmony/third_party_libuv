@@ -208,7 +208,8 @@ typedef enum {
   UV_REQ_TYPE_MAX
 } uv_req_type;
 
-
+#define UV_EVENT_MAGIC_OFFSET 0x12345ULL
+#define UV_EVENT_MAGIC_OFFSETBITS 44
 /* Handle types. */
 typedef struct uv_loop_s uv_loop_t;
 typedef struct uv_handle_s uv_handle_t;
@@ -1829,6 +1830,19 @@ union uv_any_req {
 };
 #undef XX
 
+enum TaskPriority {
+  TASK_HIGH,
+  TASK_NORMAL,
+  TASK_LOW,
+};
+
+typedef void (*uv_io_cb)(void* data, int status);
+typedef void (*uv_post_task)(void* handler, uv_io_cb func, void* data, int prio);
+
+struct uv_loop_data {
+  void* event_handler;
+  uv_post_task post_task_func;
+};
 
 struct uv_loop_s {
   /* User data - use this for whatever. */
@@ -1849,6 +1863,8 @@ struct uv_loop_s {
 
 UV_EXTERN void* uv_loop_get_data(const uv_loop_t*);
 UV_EXTERN void uv_loop_set_data(uv_loop_t*, void* data);
+UV_EXTERN void uv_register_task_to_event(struct uv_loop_s* loop, uv_post_task func, void* handler);
+UV_EXTERN void uv_unregister_task_to_event(struct uv_loop_s* loop);
 
 /* Don't export the private CPP symbols. */
 #undef UV_HANDLE_TYPE_PRIVATE
