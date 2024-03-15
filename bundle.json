@@ -25,7 +25,8 @@
             "components": [
                 "ffrt",
                 "hilog",
-                "hitrace"
+                "hitrace",
+                "faultloggerd"
             ],
             "third_party": []
         },

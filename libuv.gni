@@ -13,5 +13,6 @@
 
 declare_args() {
   use_ffrt = false
+  enable_async_stack = true
   enable_uv_statisic = false
 }
