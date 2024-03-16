@@ -37,7 +37,7 @@
 #include <stdio.h>
 
 #define MAX_THREADPOOL_SIZE 1024
-
+#define TASK_NUMBER_WARNING 50
 static uv_rwlock_t g_closed_uv_loop_rwlock;
 
 static uv_cond_t cond;
@@ -50,6 +50,25 @@ static QUEUE exit_message;
 static QUEUE wq;
 static QUEUE run_slow_work_message;
 static QUEUE slow_io_pending_wq;
+
+#ifdef USE_FFRT
+static int check_data_valid(struct uv_loop_data* data) {
+#if defined(__aarch64__)
+  if (data == NULL || ((uint64_t)data >> UV_EVENT_MAGIC_OFFSETBITS) != (uint64_t)(UV_EVENT_MAGIC_OFFSET)) {
+    return -1;
+  }
+  struct uv_loop_data* addr = (struct uv_loop_data*)((uint64_t)loop->data -
+    (UV_EVENT_MAGIC_OFFSET << UV_EVENT_MAGIC_OFFSETBITS));
+  if (addr->post_task_func == NULL) {
+    UV_LOGE("post_task_func is NULL");
+    return -1;
+  }
+  return 0;
+#else
+  return -1;
+#endif
+}
+#endif
 
 #ifdef ASYNC_STACKTRACE
 #include "async_stack.h"
@@ -608,12 +627,20 @@ static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
   uv_mutex_lock(&loop->wq_mutex);
 #ifndef USE_FFRT
   QUEUE_INSERT_TAIL(&loop->wq, &w->wq);
+  uv_async_send(&loop->wq_async);
 #else
   uv__loop_internal_fields_t* lfields = uv__get_internal_fields(w->loop);
   int qos = (ffrt_qos_t)(intptr_t)req->reserved[0];
-  QUEUE_INSERT_TAIL(&(lfields->wq_sub[qos]), &w->wq);
+
+  if (check_data_valid((struct uv_loop_data*)(w->loop->data)) == 0) {
+    struct uv_loop_data* addr = (struct uv_loop_data*)((uint64_t)w->loop->data -
+      (UV_EVENT_MAGIC_OFFSET << UV_EVENT_MAGIC_OFFSETBITS));
+    addr->post_task_func(addr->event_handler, w->done, w, qos);
+  } else {
+    QUEUE_INSERT_TAIL(&(lfields->wq_sub[qos]), &w->wq);
+    uv_async_send(&loop->wq_async);
+  }
 #endif
-  uv_async_send(&loop->wq_async);
   uv_mutex_unlock(&loop->wq_mutex);
   rdunlock_closed_uv_loop_rwlock();
 
@@ -627,9 +654,8 @@ void uv__work_done(uv_async_t* handle) {
   QUEUE* q;
   QUEUE wq;
   int err;
-  char traceName[25] = "TaskNumber_";
+  char trac_name[25] = "TaskNumber_";
   char str[10];
-  int cnt = 0;
 
   loop = container_of(handle, uv_loop_t, wq_async);
   rdlock_closed_uv_loop_rwlock();
@@ -651,14 +677,13 @@ void uv__work_done(uv_async_t* handle) {
   }
 #endif
   uv_mutex_unlock(&loop->wq_mutex);
-  cnt = loop->active_reqs.count;
-  if (cnt > 50) {
-      UV_LOGW("The number of task is too much, task number is %{public}d", cnt);
+  if (loop->active_reqs.count > TASK_NUMBER_WARNING) {
+      UV_LOGW("The number of task is too much, task number is %{public}d", loop->active_reqs.count);
   }
-  snprintf(str, sizeof(str), "%d", cnt);
-  strcat(traceName, str);
+  snprintf(str, sizeof(str), "%d", loop->active_reqs.count);
+  strcat(trac_name, str);
 
-  uv_start_trace(UV_TRACE_TAG, traceName);
+  uv_start_trace(UV_TRACE_TAG, trac_name);
   while (!QUEUE_EMPTY(&wq)) {
     q = QUEUE_HEAD(&wq);
     QUEUE_REMOVE(q);
@@ -744,8 +769,15 @@ void uv__ffrt_work(ffrt_executor_task_t* data, ffrt_qos_t qos)
 
   uv_mutex_lock(&w->loop->wq_mutex);
   w->work = NULL; /* Signal uv_cancel() that the work req is done executing. */
-  QUEUE_INSERT_TAIL(&(lfields->wq_sub[qos]), &w->wq);
-  uv_async_send(&w->loop->wq_async);
+
+  if (check_data_valid((struct uv_loop_data*)(w->loop->data)) == 0) {
+    struct uv_loop_data* addr = (struct uv_loop_data*)((uint64_t)w->loop->data -
+      (UV_EVENT_MAGIC_OFFSET << UV_EVENT_MAGIC_OFFSETBITS));
+    addr->post_task_func(addr->event_handler, w->done, w, qos);
+  } else {
+    QUEUE_INSERT_TAIL(&(lfields->wq_sub[qos]), &w->wq);
+    uv_async_send(&w->loop->wq_async);
+  }
   uv_mutex_unlock(&w->loop->wq_mutex);
   rdunlock_closed_uv_loop_rwlock();
 }
