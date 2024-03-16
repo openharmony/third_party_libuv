@@ -19,6 +19,7 @@
  */
 
 #include "uv.h"
+#include "uv_log.h"
 #include "internal.h"
 #include "strtok.h"
 
@@ -1675,4 +1676,40 @@ unsigned int uv_available_parallelism(void) {
 
   return (unsigned) rc;
 #endif  /* __linux__ */
+}
+
+void uv_register_task_to_event(struct uv_loop_s* loop, uv_post_task func, void* handler)
+{
+#if defined(__aarch64__)
+  if (loop == NULL)
+    return;
+
+  struct uv_loop_data* data = (struct uv_loop_data*)malloc(sizeof(struct uv_loop_data));
+  if (data == NULL)
+    return;
+  if ((uint64_t)data >> UV_EVENT_MAGIC_OFFSETBITS != 0x0) {
+    UV_LOGE("malloc address error!");
+    free(data);
+    return;
+  }
+
+  (void)memset(data, 0, sizeof(struct uv_loop_data));
+  data->post_task_func = func;
+  data->event_handler = handler;
+  data = (struct uv_loop_data*)((uint64_t)data | (UV_EVENT_MAGIC_OFFSET << UV_EVENT_MAGIC_OFFSETBITS));
+  loop->data = (void *)data;
+#endif
+}
+
+void uv_unregister_task_to_event(struct uv_loop_s* loop)
+{
+#if defined(__aarch64__)
+  if (loop == NULL || loop->data == NULL ||
+    ((uint64_t)loop->data >> UV_EVENT_MAGIC_OFFSETBITS) != (uint64_t)(UV_EVENT_MAGIC_OFFSET))
+    return;
+  loop->data = (struct uv_loop_data*)((uint64_t)loop->data -
+    (UV_EVENT_MAGIC_OFFSET << UV_EVENT_MAGIC_OFFSETBITS));
+  free(loop->data);
+  loop->data = NULL;
+#endif
 }
