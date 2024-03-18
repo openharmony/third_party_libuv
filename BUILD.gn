@@ -292,6 +292,12 @@ if (defined(ohos_lite)) {
           "hitrace:hitrace_meter",
         ]
       }
+      if (is_android) {
+       sources += [
+          "src/win/log_win.c",
+          "src/win/trace_win.c",
+        ]
+      }
     } else if (is_linux) {
       sources += nonwin_srcs + [
                    "src/unix/linux-core.c",
