@@ -1678,19 +1678,19 @@ unsigned int uv_available_parallelism(void) {
 #endif  /* __linux__ */
 }
 
-void uv_register_task_to_event(struct uv_loop_s* loop, uv_post_task func, void* handler)
+int uv_register_task_to_event(struct uv_loop_s* loop, uv_post_task func, void* handler)
 {
 #if defined(__aarch64__)
   if (loop == NULL)
-    return;
+    return -1;
 
   struct uv_loop_data* data = (struct uv_loop_data*)malloc(sizeof(struct uv_loop_data));
   if (data == NULL)
-    return;
+    return -1;
   if ((uint64_t)data >> UV_EVENT_MAGIC_OFFSETBITS != 0x0) {
     UV_LOGE("malloc address error!");
     free(data);
-    return;
+    return -1;
   }
 
   (void)memset(data, 0, sizeof(struct uv_loop_data));
@@ -1698,18 +1698,25 @@ void uv_register_task_to_event(struct uv_loop_s* loop, uv_post_task func, void* 
   data->event_handler = handler;
   data = (struct uv_loop_data*)((uint64_t)data | (UV_EVENT_MAGIC_OFFSET << UV_EVENT_MAGIC_OFFSETBITS));
   loop->data = (void *)data;
+  return 0;
 #endif
+  return -1;
 }
 
-void uv_unregister_task_to_event(struct uv_loop_s* loop)
+int uv_unregister_task_to_event(struct uv_loop_s* loop)
 {
 #if defined(__aarch64__)
-  if (loop == NULL || loop->data == NULL ||
-    ((uint64_t)loop->data >> UV_EVENT_MAGIC_OFFSETBITS) != (uint64_t)(UV_EVENT_MAGIC_OFFSET))
-    return;
+  if (loop == NULL || loop->data == NULL)
+    return -1;
+
+  if ((uint64_t)loop->data >> UV_EVENT_MAGIC_OFFSETBITS) != (uint64_t)(UV_EVENT_MAGIC_OFFSET))
+    return -1;
+
   loop->data = (struct uv_loop_data*)((uint64_t)loop->data -
     (UV_EVENT_MAGIC_OFFSET << UV_EVENT_MAGIC_OFFSETBITS));
   free(loop->data);
   loop->data = NULL;
+  return 0;
 #endif
+  return -1;
 }
