@@ -658,7 +658,7 @@ void uv__work_done(uv_async_t* handle) {
   QUEUE* q;
   QUEUE wq;
   int err;
-  char trac_name[25] = "TaskNumber_";
+  char trace_name[25] = "TaskNumber_";
   char str[10];
 
   loop = container_of(handle, uv_loop_t, wq_async);
@@ -685,9 +685,9 @@ void uv__work_done(uv_async_t* handle) {
     UV_LOGW("The number of task is too much, task number is %{public}d", loop->active_reqs.count);
   }
   snprintf(str, sizeof(str), "%d", loop->active_reqs.count);
-  strcat(trac_name, str);
+  strcat(trace_name, str);
 
-  uv_start_trace(UV_TRACE_TAG, trac_name);
+  uv_start_trace(UV_TRACE_TAG, trace_name);
   while (!QUEUE_EMPTY(&wq)) {
     q = QUEUE_HEAD(&wq);
     QUEUE_REMOVE(q);
