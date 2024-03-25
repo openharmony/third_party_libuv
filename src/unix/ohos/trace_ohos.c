@@ -22,9 +22,9 @@
 #include "hitrace_meter_c.h"
 
 void uv_start_trace(uint64_t tag, const char* name) {
-  OH_HiTrace_StartTrace_C(tag, name);
+  HiTraceStartTrace(tag, name);
 }
 
 void uv_end_trace(uint64_t tag) {
-  OH_HiTrace_FinishTrace_C(tag);
+  HiTraceFinishTrace(tag);
 }
