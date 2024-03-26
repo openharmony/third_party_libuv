@@ -163,13 +163,21 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
      */
     if (epoll_ctl(loop->backend_fd, op, w->fd, &e)) {
       if (errno != EEXIST)
+#ifdef PRINT_ERRNO_ABORT
+        UV_ERRNO_ABORT(errno);
+#else
         abort();
+#endif
 
       assert(op == EPOLL_CTL_ADD);
 
       /* We've reactivated a file descriptor that's been watched before. */
       if (epoll_ctl(loop->backend_fd, EPOLL_CTL_MOD, w->fd, &e))
+#ifdef PRINT_ERRNO_ABORT
+        UV_ERRNO_ABORT(errno);
+#else
         abort();
+#endif
     }
 
     w->events = w->pevents;
@@ -281,7 +289,11 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       }
 
       if (errno != EINTR)
+#ifdef PRINT_ERRNO_ABORT
+        UV_ERRNO_ABORT(errno);
+#else
         abort();
+#endif
 
       if (reset_timeout != 0) {
         timeout = user_timeout;
