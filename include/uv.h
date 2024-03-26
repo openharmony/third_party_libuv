@@ -183,6 +183,18 @@ extern "C" {
   XX(GETNAMEINFO, getnameinfo)                                                \
   XX(RANDOM, random)                                                          \
 
+#ifdef PRINT_ERRNO_ABORT
+#include "info/fatal_message.h"
+#define UV_ERRNO_ABORT(errno)                                                 \
+  do {                                                                        \
+    char errno_message[1024];                                                 \
+    snprintf(errno_message, sizeof(errno_message),                            \
+      "errno is %d (%s: %s: %d)", errno, __FILE__, __func__, __LINE__);       \
+    set_fatal_message(errno_message);                                         \
+    abort();                                                                  \
+  } while(0)
+#endif
+
 typedef enum {
 #define XX(code, _) UV_ ## code = UV__ ## code,
   UV_ERRNO_MAP(XX)
