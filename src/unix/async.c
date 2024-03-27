@@ -106,7 +106,11 @@ static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
     if (errno == EINTR)
       continue;
 
+#ifdef PRINT_ERRNO_ABORT
+    UV_ERRNO_ABORT(errno);
+#else
     abort();
+#endif
   }
 
   QUEUE_MOVE(&loop->async_handles, &queue);
@@ -159,7 +163,11 @@ static void uv__async_send(uv_async_t* handle) {
     if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)
       return;
 
-  abort();
+#ifdef PRINT_ERRNO_ABORT
+    UV_ERRNO_ABORT(errno);
+#else
+    abort();
+#endif
 }
 
 
