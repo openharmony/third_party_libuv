@@ -358,35 +358,3 @@ if (defined(ohos_lite)) {
     ]
   }
 }
-
-ohos_ndk_library("libuv_ndk") {
-  ndk_description_file = "./libuv.ndk.json"
-  min_compact_version = "1"
-  output_name = "uv"
-  output_extension = "so"
-}
-
-ohos_ndk_headers("libuv_header") {
-  dest_dir = "$ndk_headers_out_dir"
-  sources = [ "include/uv_ndk/uv.h" ]
-}
-
-ohos_ndk_headers("libuv_uv_header") {
-  dest_dir = "$ndk_headers_out_dir/uv"
-  sources = [
-    "include/uv/aix.h",
-    "include/uv/bsd.h",
-    "include/uv/darwin.h",
-    "include/uv/errno.h",
-    "include/uv/linux.h",
-    "include/uv/os390.h",
-    "include/uv/posix.h",
-    "include/uv/stdint-msvc2008.h",
-    "include/uv/sunos.h",
-    "include/uv/threadpool.h",
-    "include/uv/tree.h",
-    "include/uv/unix.h",
-    "include/uv/version.h",
-    "include/uv/win.h",
-  ]
-}

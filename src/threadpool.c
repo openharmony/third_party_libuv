@@ -38,6 +38,8 @@
 
 #define MAX_THREADPOOL_SIZE 1024
 #define TASK_NUMBER_WARNING 50
+#define UV_TRACE_NAME "UV_TRACE"
+
 static uv_rwlock_t g_closed_uv_loop_rwlock;
 
 static uv_cond_t cond;
@@ -632,7 +634,7 @@ static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
   uv__loop_internal_fields_t* lfields = uv__get_internal_fields(w->loop);
   int qos = (ffrt_qos_t)(intptr_t)req->reserved[0];
 
-  if (check_data_valid((struct uv_loop_data*)(w->loop->data)) == 0) {
+  if (check_data_valid((struct uv_loop_data*)(loop->data)) == 0) {
     struct uv_parm_t parm;
     uv_work_t* work_temp = container_of(w, uv_work_t, work_req);
     parm.work = req;
@@ -677,9 +679,15 @@ void uv__work_done(uv_async_t* handle) {
       QUEUE_APPEND(&lfields->wq_sub[i], &wq);
     }
   }
+
+  if (loop->active_reqs.count > TASK_NUMBER_WARNING
+    && check_data_valid((struct uv_loop_data*)(loop->data)) != 0) {
+    UV_LOGW("The number of task is too much, task number is %{public}u", loop->active_reqs.count);
+  }
 #endif
   uv_mutex_unlock(&loop->wq_mutex);
 
+  uv_start_trace(UV_TRACE_TAG, UV_TRACE_NAME);
   while (!QUEUE_EMPTY(&wq)) {
     q = QUEUE_HEAD(&wq);
     QUEUE_REMOVE(q);
@@ -708,6 +716,7 @@ void uv__work_done(uv_async_t* handle) {
     post_statistic_work(&dump_work->wq);
 #endif
   }
+  uv_end_trace(UV_TRACE_TAG);
   rdunlock_closed_uv_loop_rwlock();
 }
 
