@@ -36,6 +36,8 @@
 #endif
 #include <stdio.h>
 
+#include "hitrace/trace.h"
+
 #define MAX_THREADPOOL_SIZE 1024
 #define TASK_NUMBER_WARNING 50
 #define UV_TRACE_NAME "UV_TRACE"
@@ -724,7 +726,22 @@ void uv__work_done(uv_async_t* handle) {
 static void uv__queue_work(struct uv__work* w) {
   uv_work_t* req = container_of(w, uv_work_t, work_req);
 
+#ifdef ENABLE_HITRACE
+  HiTraceIdStruct currentId = HiTraceChainGetId();
+  if (req->reserved[1] != NULL) {
+    HiTraceChainSaveAndSetId((HiTraceIdStruct*)(req->reserved[1]));
+    HiTraceChainTracepoint(HITRACE_TP_SR, (HiTraceIdStruct*)(req->reserved[1]), "libuv::uv__queue_work");
+  }
+#endif
+
   req->work_cb(req);
+
+#ifdef ENABLE_HITRACE
+  if (req->reserved[1] != NULL) {
+    HiTraceChainTracepoint(HITRACE_TP_SS, (HiTraceIdStruct*)(req->reserved[1]), "libuv::uv__queue_work");
+    HiTraceChainRestoreId(&currentId);
+  }
+#endif
 }
 
 
@@ -737,7 +754,20 @@ static void uv__queue_done(struct uv__work* w, int err) {
   if (req->after_work_cb == NULL)
     return;
 
+#ifdef ENABLE_HITRACE
+  HiTraceIdStruct currentId = HiTraceChainGetId();
+  if (req->reserved[1] != NULL) {
+    HiTraceChainSaveAndSetId((HiTraceIdStruct*)(req->reserved[1]));
+  }
+#endif
+
   req->after_work_cb(req, err);
+
+#ifdef ENABLE_HITRACE
+  if (req->reserved[1] != NULL) {
+    HiTraceChainRestoreId(&currentId);
+  }
+#endif
 }
 
 
@@ -884,6 +914,17 @@ int uv_queue_work(uv_loop_t* loop,
 #ifdef ASYNC_STACKTRACE
   req->reserved[3] = (void*)CollectAsyncStack();
 #endif
+
+#ifdef ENABLE_HITRACE
+  HiTraceIdStruct traceId = HiTraceChainGetId();
+  req->reserved[1] = NULL;
+  if (traceId.valid == HITRACE_ID_VALID) {
+    req->reserved[1] = (HiTraceIdStruct*)malloc(sizeof(HiTraceIdStruct));
+    *((HiTraceIdStruct*)(req->reserved[1])) = HiTraceChainCreateSpan();
+    HiTraceChainTracepoint(HITRACE_TP_CS, (HiTraceIdStruct*)(req->reserved[1]), "libuv::uv_queue_work");
+  }
+#endif
+
   uv__work_submit(loop,
 #ifdef USE_FFRT
                   (uv_req_t*)req,
@@ -895,6 +936,12 @@ int uv_queue_work(uv_loop_t* loop,
 );
 #ifdef UV_STATISTIC
   uv_queue_statics(info);
+#endif
+
+#ifdef ENABLE_HITRACE
+  if (traceId.valid == HITRACE_ID_VALID && req->reserved[1] != NULL) {
+    HiTraceChainTracepoint(HITRACE_TP_CR, (HiTraceIdStruct*)(req->reserved[1]), "libuv::uv_queue_work");
+  }
 #endif
   return 0;
 }
@@ -932,6 +979,17 @@ int uv_queue_work_with_qos(uv_loop_t* loop,
   info->builtin_return_address[2] = __builtin_return_address(2);
   (req->work_req).info = info;
 #endif
+
+#ifdef ENABLE_HITRACE
+  HiTraceIdStruct traceId = HiTraceChainGetId();
+  req->reserved[1] = NULL;
+  if (traceId.valid == HITRACE_ID_VALID) {
+    req->reserved[1] = (HiTraceIdStruct*)malloc(sizeof(HiTraceIdStruct));
+    *((HiTraceIdStruct*)(req->reserved[1])) = HiTraceChainCreateSpan();
+    HiTraceChainTracepoint(HITRACE_TP_CS, (HiTraceIdStruct*)(req->reserved[1]), "libuv::uv_queue_work_with_qos");
+  }
+#endif
+
   uv__work_submit_with_qos(loop,
                   (uv_req_t*)req,
                   &req->work_req,
@@ -941,6 +999,13 @@ int uv_queue_work_with_qos(uv_loop_t* loop,
 #ifdef UV_STATISTIC
   uv_queue_statics(info);
 #endif
+
+#ifdef ENABLE_HITRACE
+  if (traceId.valid == HITRACE_ID_VALID && req->reserved[1] != NULL) {
+    HiTraceChainTracepoint(HITRACE_TP_CR, (HiTraceIdStruct*)(req->reserved[1]), "libuv::uv_queue_work_with_qos");
+  }
+#endif
+
   return 0;
 #else
   return uv_queue_work(loop, req, work_cb, after_work_cb);
