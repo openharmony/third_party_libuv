@@ -36,7 +36,9 @@
 #endif
 #include <stdio.h>
 
+#ifdef ENABLE_HITRACE
 #include "hitrace/trace.h"
+#endif
 
 #define MAX_THREADPOOL_SIZE 1024
 #define TASK_NUMBER_WARNING 50
