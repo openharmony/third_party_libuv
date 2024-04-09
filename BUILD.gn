@@ -187,7 +187,10 @@ if (defined(ohos_lite)) {
         defines += [ "PRINT_ERRNO_ABORT" ]
       }
 
-      defines += [ "ENABLE_HITRACE" ]
+      if (is_ohos) {
+        defines += [ "ENABLE_HITRACE" ]
+      }
+
       if (enable_uv_statisic && is_ohos) {
         defines += [ "UV_STATISTIC" ]
         cflags +=
@@ -300,6 +303,7 @@ if (defined(ohos_lite)) {
         ]
         external_deps += [
           "hilog:libhilog",
+          "hitrace:libhitracechain",
           "hitrace:hitrace_meter",
         ]
       }
@@ -312,7 +316,6 @@ if (defined(ohos_lite)) {
           "src/win/trace_win.c",
         ]
       }
-      external_deps += [ "hitrace:libhitracechain" ]
     } else if (is_linux) {
       sources += nonwin_srcs + [
                    "src/unix/linux-core.c",
