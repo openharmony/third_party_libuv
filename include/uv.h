@@ -185,11 +185,10 @@ extern "C" {
 
 #ifdef PRINT_ERRNO_ABORT
 #include "info/fatal_message.h"
-#define UV_ERRNO_ABORT(errno)                                                 \
+#define UV_ERRNO_ABORT(...)                                                   \
   do {                                                                        \
     char errno_message[1024];                                                 \
-    snprintf(errno_message, sizeof(errno_message),                            \
-      "errno is %d (%s: %s: %d)", errno, __FILE__, __func__, __LINE__);       \
+    snprintf(errno_message, sizeof(errno_message), __VA_ARGS__);              \
     set_fatal_message(errno_message);                                         \
     abort();                                                                  \
   } while(0)

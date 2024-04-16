@@ -20,6 +20,7 @@
  */
 
 #include "uv.h"
+#include "uv_log.h"
 #include "internal.h"
 #include <errno.h>
 #include <sys/epoll.h>
@@ -164,7 +165,8 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     if (epoll_ctl(loop->backend_fd, op, w->fd, &e)) {
       if (errno != EEXIST)
 #ifdef PRINT_ERRNO_ABORT
-        UV_ERRNO_ABORT(errno);
+        UV_ERRNO_ABORT("errno is %d, loop addr is %zu, backend_fd is %d, fd is %d (%s:%s:%d)",
+          errno, (size_t)loop, loop->backend_fd, w->fd, __FILE__, __func__, __LINE__);
 #else
         abort();
 #endif
@@ -174,7 +176,8 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       /* We've reactivated a file descriptor that's been watched before. */
       if (epoll_ctl(loop->backend_fd, EPOLL_CTL_MOD, w->fd, &e))
 #ifdef PRINT_ERRNO_ABORT
-        UV_ERRNO_ABORT(errno);
+        UV_ERRNO_ABORT("errno is %d, loop addr is %zu, backend_fd is %d, fd is %d (%s:%s:%d)",
+          errno, (size_t)loop, loop->backend_fd, w->fd, __FILE__, __func__, __LINE__);
 #else
         abort();
 #endif
@@ -290,7 +293,8 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
 
       if (errno != EINTR)
 #ifdef PRINT_ERRNO_ABORT
-        UV_ERRNO_ABORT(errno);
+        UV_ERRNO_ABORT("errno is %d, loop addr is %zu, backend_fd is %d (%s:%s:%d)",
+          errno, (size_t)loop, loop->backend_fd, __FILE__, __func__, __LINE__);
 #else
         abort();
 #endif
