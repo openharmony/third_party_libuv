@@ -25,6 +25,7 @@
 #include "uv.h"
 #include "internal.h"
 #include "atomic-ops.h"
+#include "uv_log.h"
 
 #include <errno.h>
 #include <stdio.h>  /* snprintf() */
@@ -107,7 +108,8 @@ static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
       continue;
 
 #ifdef PRINT_ERRNO_ABORT
-    UV_ERRNO_ABORT(errno);
+    UV_ERRNO_ABORT("errno is %d, loop addr is %zu, fd is %d (%s:%s:%d)",
+      errno, (size_t)loop, w->fd, __FILE__, __func__, __LINE__);
 #else
     abort();
 #endif
@@ -164,7 +166,8 @@ static void uv__async_send(uv_async_t* handle) {
       return;
 
 #ifdef PRINT_ERRNO_ABORT
-    UV_ERRNO_ABORT(errno);
+    UV_ERRNO_ABORT("errno is %d, loop addr is %zu, fd is %d (%s:%s:%d)",
+      errno, (size_t)loop, fd, __FILE__, __func__, __LINE__);
 #else
     abort();
 #endif
@@ -194,7 +197,8 @@ static int uv__async_start(uv_loop_t* loop) {
   uv__io_init(&loop->async_io_watcher, uv__async_io, pipefd[0]);
   uv__io_start(loop, &loop->async_io_watcher, POLLIN);
   loop->async_wfd = pipefd[1];
-
+  UV_LOGI("open: loop addr is %{public}zu, loop->async_wfd is %{public}d,"
+    "loop->async_io_watcher.fd is %{public}d", (size_t)loop, loop->async_wfd, pipefd[0]);
   return 0;
 }
 
@@ -214,12 +218,16 @@ void uv__async_stop(uv_loop_t* loop) {
     return;
 
   if (loop->async_wfd != -1) {
-    if (loop->async_wfd != loop->async_io_watcher.fd)
+    if (loop->async_wfd != loop->async_io_watcher.fd) {
       uv__close(loop->async_wfd);
+      UV_LOGI("close: loop addr is %{public}zu, loop->async_wfd is %{public}d", (size_t)loop, loop->async_wfd);
+    }
     loop->async_wfd = -1;
   }
 
   uv__io_stop(loop, &loop->async_io_watcher, POLLIN);
   uv__close(loop->async_io_watcher.fd);
+  UV_LOGI("close: loop addr is %{public}zu, loop->async_io_watcher.fd is %{public}d",
+    (size_t)loop, loop->async_io_watcher.fd);
   loop->async_io_watcher.fd = -1;
 }
