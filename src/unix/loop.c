@@ -21,6 +21,7 @@
 
 #include "uv.h"
 #include "uv/tree.h"
+#include "uv_log.h"
 #include "internal.h"
 #include "heap-inl.h"
 #include <stdlib.h>
@@ -32,7 +33,7 @@ int uv_loop_init(uv_loop_t* loop) {
   void* saved_data;
   int err;
 
-
+  UV_LOGI("loop init: loop addr is %{public}zu", (size_t)loop);
   saved_data = loop->data;
   memset(loop, 0, sizeof(*loop));
   loop->data = saved_data;
@@ -184,6 +185,7 @@ void uv__loop_close(uv_loop_t* loop) {
 
   if (loop->backend_fd != -1) {
     uv__close(loop->backend_fd);
+    UV_LOGI("close: loop addr is %{public}zu, loop->backend_fd is %{public}d", (size_t)loop, loop->backend_fd);
     loop->backend_fd = -1;
   }
 
