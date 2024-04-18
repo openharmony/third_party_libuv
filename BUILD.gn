@@ -187,10 +187,6 @@ if (defined(ohos_lite)) {
         defines += [ "PRINT_ERRNO_ABORT" ]
       }
 
-      if (is_ohos) {
-        defines += [ "ENABLE_HITRACE" ]
-      }
-
       if (enable_uv_statisic && is_ohos) {
         defines += [ "UV_STATISTIC" ]
         cflags +=
@@ -292,7 +288,6 @@ if (defined(ohos_lite)) {
                    "src/unix/random-sysctl-linux.c",
                    "src/unix/proctitle.c",
                  ]
-      external_deps = []
       if (use_ffrt) {
         external_deps += [ "ffrt:libffrt" ]
       }
@@ -304,7 +299,6 @@ if (defined(ohos_lite)) {
         external_deps += [
           "hilog:libhilog",
           "hitrace:hitrace_meter",
-          "hitrace:libhitracechain",
         ]
       }
       if (is_ohos && enable_async_stack) {
