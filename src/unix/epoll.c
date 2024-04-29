@@ -29,7 +29,7 @@
 #include "ffrt.h"
 #include "c/executor_task.h"
 
-int uv__epoll_wait(struct epoll_events, int eventsize, uint64_t timeout) {
+int uv__epoll_wait(struct epoll_event* events, int eventsize, uint64_t timeout) {
   int nfds = 0;
   if (ffrt_get_cur_task() != NULL) {
     ffrt_qos_t qos = ffrt_this_task_get_qos();
