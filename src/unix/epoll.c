@@ -32,7 +32,7 @@
 int uv__epoll_wait(struct epoll_events, int eventsize, uint64_t timeout) {
   int nfds = 0;
   if (ffrt_get_cur_task() != NULL) {
-    ffrt_qos_t qos = ffrt_get_current_qos();
+    ffrt_qos_t qos = ffrt_this_task_get_qos();
     ffrt_poller_wait(qos, events, eventsize, timeout, &nfds);
   }
   return nfds;
@@ -42,7 +42,7 @@ int uv__epoll_wait(struct epoll_events, int eventsize, uint64_t timeout) {
 int uv__epoll_ctl(int epoll_fd, int op, int fd, struct epoll_event* event) {
 #ifdef USE_FFRT
   if (ffrt_get_cur_task() != NULL) {
-    ffrt_qos_t qos = ffrt_get_current_qos();
+    ffrt_qos_t qos = ffrt_this_task_get_qos();
     return ffrt_epoll_ctl(qos, op, fd, event->events, NULL, NULL);
   }
 #endif
