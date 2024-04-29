@@ -27,6 +27,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#ifdef USE_FFRT
+#include "ffrt.h"
+
+static uv_once_t loop_once = UV_ONCE_INIT;
+
+static uint64_t uv_hrtime_fast(void)
+{
+  return uv__hrtime(UV_CLOCK_FAST) / 1000000;
+}
+#endif
 
 int uv_loop_init(uv_loop_t* loop) {
   uv__loop_internal_fields_t* lfields;
