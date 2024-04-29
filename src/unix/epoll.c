@@ -46,7 +46,7 @@ int uv__epoll_ctl(int epoll_fd, int op, int fd, struct epoll_event* event) {
     return ffrt_epoll_ctl(qos, op, fd, event->events, NULL, NULL);
   }
 #endif
-  return epoll_ctl(epoll_fd, op, fd ,event)
+  return epoll_ctl(epoll_fd, op, fd ,event);
 }
 
 int uv__epoll_init(uv_loop_t* loop) {
