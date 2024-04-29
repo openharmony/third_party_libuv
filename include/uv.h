@@ -1841,17 +1841,12 @@ union uv_any_req {
 };
 #undef XX
 
-typedef void (*uv_io_cb)(uv_work_t* work, int status);
-typedef void (*uv_post_task)(void* handler, uv_io_cb func, void* data, int prio);
+typedef void (*uv_io_cb)(void* work, int status);
+typedef void (*uv_post_task)(void* handler, uv_io_cb func, void* work, int status, int prio);
 
 struct uv_loop_data {
   void* event_handler;
   uv_post_task post_task_func;
-};
-
-struct uv_parm_t {
-  uv_work_t* work;
-  int status;
 };
 
 struct uv_loop_s {

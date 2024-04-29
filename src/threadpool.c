@@ -594,6 +594,14 @@ void uv__work_submit(uv_loop_t* loop,
 #endif
 
 
+#ifdef USE_FFRT
+static void uv__task_done_wrapper(void* work, int status) {
+  struct uv__work* w = (struct uv__work*)work;
+  w->done(w, status);
+}
+#endif
+
+
 static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
   int cancelled;
 
@@ -635,13 +643,10 @@ static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
   int qos = (ffrt_qos_t)(intptr_t)req->reserved[0];
 
   if (check_data_valid((struct uv_loop_data*)(loop->data)) == 0) {
-    struct uv_parm_t parm;
-    uv_work_t* work_temp = container_of(w, uv_work_t, work_req);
-    parm.work = req;
-    parm.status = UV_ECANCELED;
+    int status = (w->work == uv__cancelled) ? UV_ECANCELED : 0;
     struct uv_loop_data* addr = (struct uv_loop_data*)((uint64_t)w->loop->data -
       (UV_EVENT_MAGIC_OFFSET << UV_EVENT_MAGIC_OFFSETBITS));
-    addr->post_task_func(addr->event_handler, work_temp->after_work_cb, (void*) &parm, qos);
+    addr->post_task_func(addr->event_handler, uv__task_done_wrapper, (void*)w, status, qos);
   } else {
     QUEUE_INSERT_TAIL(&(lfields->wq_sub[qos]), &w->wq);
     uv_async_send(&loop->wq_async);
@@ -759,34 +764,19 @@ void uv__ffrt_work(ffrt_executor_task_t* data, ffrt_qos_t qos)
 #endif
   uv__loop_internal_fields_t* lfields = uv__get_internal_fields(loop);
 
-  rdlock_closed_uv_loop_rwlock();
-  if (loop->magic != UV_LOOP_MAGIC
-      || !lfields
-      || qos >= ARRAY_SIZE(lfields->wq_sub)
-      || !lfields->wq_sub[qos][0]
-      || !lfields->wq_sub[qos][1]) {
-    rdunlock_closed_uv_loop_rwlock();
-    UV_LOGE("uv_loop(%{public}zu:%{public}#x) in task(%p:%p) is invalid",
-            (size_t)loop, loop->magic, req->work_cb, req->after_work_cb);
-    return;
-  }
-
   uv_mutex_lock(&loop->wq_mutex);
   w->work = NULL; /* Signal uv_cancel() that the work req is done executing. */
 
   if (check_data_valid((struct uv_loop_data*)(loop->data)) == 0) {
-    struct uv_parm_t parm;
-    parm.work = req;
-    parm.status = 0;
+    int status = (w->work == uv__cancelled) ? UV_ECANCELED : 0;
     struct uv_loop_data* addr = (struct uv_loop_data*)((uint64_t)loop->data -
       (UV_EVENT_MAGIC_OFFSET << UV_EVENT_MAGIC_OFFSETBITS));
-    addr->post_task_func(addr->event_handler, req->after_work_cb, (void*) &parm, qos);
+    addr->post_task_func(addr->event_handler, uv__task_done_wrapper, (void*)w, status, qos);
   } else {
     QUEUE_INSERT_TAIL(&(lfields->wq_sub[qos]), &w->wq);
     uv_async_send(&loop->wq_async);
   }
   uv_mutex_unlock(&loop->wq_mutex);
-  rdunlock_closed_uv_loop_rwlock();
 }
 
 static void init_once(void)
