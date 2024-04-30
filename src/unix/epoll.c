@@ -24,30 +24,6 @@
 #include "internal.h"
 #include <errno.h>
 #include <sys/epoll.h>
-#include <unistd.h>
-#ifdef USE_FFRT
-#include "ffrt.h"
-#include "c/executor_task.h"
-
-int uv__epoll_wait(struct epoll_event* events, int eventsize, uint64_t timeout) {
-  int nfds = 0;
-  if (ffrt_get_cur_task() != NULL) {
-    ffrt_qos_t qos = ffrt_this_task_get_qos();
-    ffrt_poller_wait(qos, events, eventsize, timeout, &nfds);
-  }
-  return nfds;
-}
-#endif
-
-int uv__epoll_ctl(int epoll_fd, int op, int fd, struct epoll_event* event) {
-#ifdef USE_FFRT
-  if (ffrt_get_cur_task() != NULL) {
-    ffrt_qos_t qos = ffrt_this_task_get_qos();
-    return ffrt_epoll_ctl(qos, op, fd, event->events, NULL, NULL);
-  }
-#endif
-  return epoll_ctl(epoll_fd, op, fd ,event);
-}
 
 int uv__epoll_init(uv_loop_t* loop) {
   int fd;
@@ -99,7 +75,7 @@ void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
      * has the EPOLLWAKEUP flag set generates spurious audit syslog warnings.
      */
     memset(&dummy, 0, sizeof(dummy));
-    uv__epoll_ctl(loop->backend_fd, EPOLL_CTL_DEL, fd, &dummy);
+    epoll_ctl(loop->backend_fd, EPOLL_CTL_DEL, fd, &dummy);
   }
 }
 
@@ -113,12 +89,12 @@ int uv__io_check_fd(uv_loop_t* loop, int fd) {
   e.data.fd = -1;
 
   rc = 0;
-  if (uv__epoll_ctl(loop->backend_fd, EPOLL_CTL_ADD, fd, &e))
+  if (epoll_ctl(loop->backend_fd, EPOLL_CTL_ADD, fd, &e))
     if (errno != EEXIST)
       rc = UV__ERR(errno);
 
   if (rc == 0)
-    if (uv__epoll_ctl(loop->backend_fd, EPOLL_CTL_DEL, fd, &e))
+    if (epoll_ctl(loop->backend_fd, EPOLL_CTL_DEL, fd, &e))
       abort();
 
   return rc;
@@ -186,7 +162,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     /* XXX Future optimization: do EPOLL_CTL_MOD lazily if we stop watching
      * events, skip the syscall and squelch the events after epoll_wait().
      */
-    if (uv__epoll_ctl(loop->backend_fd, op, w->fd, &e)) {
+    if (epoll_ctl(loop->backend_fd, op, w->fd, &e)) {
       if (errno != EEXIST)
 #ifdef PRINT_ERRNO_ABORT
         UV_ERRNO_ABORT("errno is %d, loop addr is %zu, backend_fd is %d, fd is %d (%s:%s:%d)",
@@ -198,7 +174,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       assert(op == EPOLL_CTL_ADD);
 
       /* We've reactivated a file descriptor that's been watched before. */
-      if (uv__epoll_ctl(loop->backend_fd, EPOLL_CTL_MOD, w->fd, &e))
+      if (epoll_ctl(loop->backend_fd, EPOLL_CTL_MOD, w->fd, &e))
 #ifdef PRINT_ERRNO_ABORT
         UV_ERRNO_ABORT("errno is %d, loop addr is %zu, backend_fd is %d, fd is %d (%s:%s:%d)",
           errno, (size_t)loop, loop->backend_fd, w->fd, __FILE__, __func__, __LINE__);
@@ -256,34 +232,28 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     if (sigmask != 0 && no_epoll_pwait != 0)
       if (pthread_sigmask(SIG_BLOCK, &sigset, NULL))
         abort();
-#ifdef USE_FFRT
-    if (ffrt_get_cur_task() == NULL) {
-#endif
-      if (no_epoll_wait != 0 || (sigmask != 0 && no_epoll_pwait == 0)) {
-        nfds = epoll_pwait(loop->backend_fd,
-                          events,
-                          ARRAY_SIZE(events),
-                          timeout,
-                          &sigset);
-        if (nfds == -1 && errno == ENOSYS) {
-          uv__store_relaxed(&no_epoll_pwait_cached, 1);
-          no_epoll_pwait = 1;
-        }
-      } else {
-        nfds = epoll_wait(loop->backend_fd,
-                          events,
-                          ARRAY_SIZE(events),
-                          timeout);
-        if (nfds == -1 && errno == ENOSYS) {
-          uv__store_relaxed(&no_epoll_wait_cached, 1);
-          no_epoll_wait = 1;
-        }
+
+    if (no_epoll_wait != 0 || (sigmask != 0 && no_epoll_pwait == 0)) {
+      nfds = epoll_pwait(loop->backend_fd,
+                         events,
+                         ARRAY_SIZE(events),
+                         timeout,
+                         &sigset);
+      if (nfds == -1 && errno == ENOSYS) {
+        uv__store_relaxed(&no_epoll_pwait_cached, 1);
+        no_epoll_pwait = 1;
       }
-#ifdef USE_FFRT
     } else {
-      nfds = uv__epoll_wait(events, ARRAY_SIZE(events), timeout);
+      nfds = epoll_wait(loop->backend_fd,
+                        events,
+                        ARRAY_SIZE(events),
+                        timeout);
+      if (nfds == -1 && errno == ENOSYS) {
+        uv__store_relaxed(&no_epoll_wait_cached, 1);
+        no_epoll_wait = 1;
+      }
     }
-#endif
+
     if (sigmask != 0 && no_epoll_pwait != 0)
       if (pthread_sigmask(SIG_UNBLOCK, &sigset, NULL))
         abort();
@@ -379,7 +349,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
          * Ignore all errors because we may be racing with another thread
          * when the file descriptor is closed.
          */
-        uv__epoll_ctl(loop->backend_fd, EPOLL_CTL_DEL, fd, pe);
+        epoll_ctl(loop->backend_fd, EPOLL_CTL_DEL, fd, pe);
         continue;
       }
 
