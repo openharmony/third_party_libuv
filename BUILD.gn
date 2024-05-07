@@ -302,7 +302,7 @@ if (defined(ohos_lite)) {
         ]
       }
       if (is_ohos && enable_async_stack) {
-        external_deps += [ "faultloggerd:libasync_stack" ]
+        sources += [ "src/dfx/async_stack/libuv_async_stack.c" ]
       }
       if (is_android) {
         sources += [

@@ -73,7 +73,7 @@ static int check_data_valid(struct uv_loop_data* data) {
 #endif
 
 #ifdef ASYNC_STACKTRACE
-#include "async_stack.h"
+#include "dfx/async_stack/libuv_async_stack.h"
 #endif
 
 #ifdef UV_STATISTIC
@@ -425,7 +425,7 @@ static void worker(void* arg) {
 #endif
 #ifdef ASYNC_STACKTRACE
     uv_work_t* req = container_of(w, uv_work_t, work_req);
-    SetStackId((uint64_t)req->reserved[3]);
+    LibuvSetStackId((uint64_t)req->reserved[3]);
 #endif
     w->work(w);
 #ifdef UV_STATISTIC
@@ -711,7 +711,7 @@ void uv__work_done(uv_async_t* handle) {
 #endif
 #ifdef ASYNC_STACKTRACE
     uv_work_t* req = container_of(w, uv_work_t, work_req);
-    SetStackId((uint64_t)req->reserved[3]);
+    LibuvSetStackId((uint64_t)req->reserved[3]);
 #endif
     w->done(w, err);
 #ifdef UV_STATISTIC
@@ -756,7 +756,7 @@ void uv__ffrt_work(ffrt_executor_task_t* data, ffrt_qos_t qos)
 #endif
   uv_work_t* req = container_of(w, uv_work_t, work_req);
 #ifdef ASYNC_STACKTRACE
-  SetStackId((uint64_t)req->reserved[3]);
+  LibuvSetStackId((uint64_t)req->reserved[3]);
 #endif
   w->work(w);
 #ifdef UV_STATISTIC
@@ -872,7 +872,7 @@ int uv_queue_work(uv_loop_t* loop,
   (req->work_req).info = info;
 #endif
 #ifdef ASYNC_STACKTRACE
-  req->reserved[3] = (void*)CollectAsyncStack();
+  req->reserved[3] = (void*)LibuvCollectAsyncStack();
 #endif
   uv__work_submit(loop,
 #ifdef USE_FFRT
