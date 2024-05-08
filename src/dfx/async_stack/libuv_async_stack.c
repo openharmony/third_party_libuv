@@ -30,7 +30,7 @@ typedef enum {
 } AsyncDfxInitStatus;
 
 static AsyncDfxInitStatus g_enabledLibuvAsyncStackStatus = ASYNC_DFX_NOT_INIT;
-static pthread_mutex_t g_mutex;
+static pthread_mutex_t g_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void LoadDfxAsyncStackLib()
 {
