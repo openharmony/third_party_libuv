@@ -380,6 +380,14 @@ int uv_loop_alive(const uv_loop_t* loop) {
 }
 
 
+int uv_loop_alive_taskpool(const uv_loop_t* loop, int initial_handles) {
+  return loop->active_handles > initial_handles ||
+         uv__has_active_reqs(loop) ||
+         !QUEUE_EMPTY(&loop->pending_queue) ||
+         loop->closing_handles != NULL;
+}
+
+
 int is_uv_loop_good_magic(const uv_loop_t* loop);
 
 
