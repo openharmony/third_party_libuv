@@ -1728,3 +1728,20 @@ int uv_unregister_task_to_event(struct uv_loop_s* loop)
   return -1;
 #endif
 }
+
+int uv_check_data_valid(struct uv_loop_data* data) {
+#if defined(__aarch64__)
+  if (data == NULL || ((uint64_t)data >> UV_EVENT_MAGIC_OFFSETBITS) != (uint64_t)(UV_EVENT_MAGIC_OFFSET)) {
+    return -1;
+  }
+  struct uv_loop_data* addr = (struct uv_loop_data*)((uint64_t)data -
+    (UV_EVENT_MAGIC_OFFSET << UV_EVENT_MAGIC_OFFSETBITS));
+  if (addr->post_task_func == NULL) {
+    UV_LOGE("post_task_func is NULL");
+    return -1;
+  }
+  return 0;
+#else
+  return -1;
+#endif
+}

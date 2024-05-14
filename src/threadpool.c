@@ -37,7 +37,7 @@
 #include <stdio.h>
 
 #define MAX_THREADPOOL_SIZE 1024
-#define TASK_NUMBER_WARNING 50
+#define TASK_NUMBER_WARNING 1000
 #define UV_TRACE_NAME "UV_TRACE"
 
 static uv_rwlock_t g_closed_uv_loop_rwlock;
@@ -52,25 +52,6 @@ static QUEUE exit_message;
 static QUEUE wq;
 static QUEUE run_slow_work_message;
 static QUEUE slow_io_pending_wq;
-
-#ifdef USE_FFRT
-static int check_data_valid(struct uv_loop_data* data) {
-#if defined(__aarch64__)
-  if (data == NULL || ((uint64_t)data >> UV_EVENT_MAGIC_OFFSETBITS) != (uint64_t)(UV_EVENT_MAGIC_OFFSET)) {
-    return -1;
-  }
-  struct uv_loop_data* addr = (struct uv_loop_data*)((uint64_t)data -
-    (UV_EVENT_MAGIC_OFFSET << UV_EVENT_MAGIC_OFFSETBITS));
-  if (addr->post_task_func == NULL) {
-    UV_LOGE("post_task_func is NULL");
-    return -1;
-  }
-  return 0;
-#else
-  return -1;
-#endif
-}
-#endif
 
 #ifdef ASYNC_STACKTRACE
 #include "dfx/async_stack/libuv_async_stack.h"
@@ -642,7 +623,7 @@ static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
   uv__loop_internal_fields_t* lfields = uv__get_internal_fields(w->loop);
   int qos = (ffrt_qos_t)(intptr_t)req->reserved[0];
 
-  if (check_data_valid((struct uv_loop_data*)(loop->data)) == 0) {
+  if (uv_check_data_valid((struct uv_loop_data*)(loop->data)) == 0) {
     int status = (w->work == uv__cancelled) ? UV_ECANCELED : 0;
     struct uv_loop_data* addr = (struct uv_loop_data*)((uint64_t)w->loop->data -
       (UV_EVENT_MAGIC_OFFSET << UV_EVENT_MAGIC_OFFSETBITS));
@@ -686,7 +667,7 @@ void uv__work_done(uv_async_t* handle) {
   }
 
   if (loop->active_reqs.count > TASK_NUMBER_WARNING
-    && check_data_valid((struct uv_loop_data*)(loop->data)) != 0) {
+    && uv_check_data_valid((struct uv_loop_data*)(loop->data)) != 0) {
     UV_LOGW("The number of task is too much, task number is %{public}u", loop->active_reqs.count);
   }
 #endif
@@ -767,7 +748,7 @@ void uv__ffrt_work(ffrt_executor_task_t* data, ffrt_qos_t qos)
   uv_mutex_lock(&loop->wq_mutex);
   w->work = NULL; /* Signal uv_cancel() that the work req is done executing. */
 
-  if (check_data_valid((struct uv_loop_data*)(loop->data)) == 0) {
+  if (uv_check_data_valid((struct uv_loop_data*)(loop->data)) == 0) {
     int status = (w->work == uv__cancelled) ? UV_ECANCELED : 0;
     struct uv_loop_data* addr = (struct uv_loop_data*)((uint64_t)loop->data -
       (UV_EVENT_MAGIC_OFFSET << UV_EVENT_MAGIC_OFFSETBITS));
