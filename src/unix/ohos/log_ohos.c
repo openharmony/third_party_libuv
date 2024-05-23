@@ -47,7 +47,7 @@ LogLevel convert_uv_log_level(enum uv__log_level level) {
 int uv__log_impl(enum uv__log_level level, const char *fmt, ...) {
   va_list args;
   va_start(args, fmt);
-  int ret = HiLogPrintArgs(LOG_TYPE_MIN, convert_uv_log_level(level), 0xD003900, "UV", fmt, args);
+  int ret = HiLogPrintArgs(LOG_CORE, convert_uv_log_level(level), 0xD003900, "UV", fmt, args);
   va_end(args);
   return ret;
 }
