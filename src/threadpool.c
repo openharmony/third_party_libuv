@@ -744,6 +744,17 @@ void uv__ffrt_work(ffrt_executor_task_t* data, ffrt_qos_t qos)
   uv__post_statistic_work(w, WORK_END);
 #endif
   uv__loop_internal_fields_t* lfields = uv__get_internal_fields(loop);
+  rdlock_closed_uv_loop_rwlock();
+  if (loop->magic != UV_LOOP_MAGIC
+      || !lfields
+      || qos >= ARRAY_SIZE(lfields->wq_sub)
+      || !lfields->wq_sub[qos][0]
+      || !lfields->wq_sub[qos][1]) {
+    rdunlock_closed_uv_loop_rwlock();
+    UV_LOGE("uv_loop(%{public}zu:%{public}#x) in task(%p:%p) is invalid",
+            (size_t)loop, loop->magic, req->work_cb, req->after_work_cb);
+    return;
+  }
 
   uv_mutex_lock(&loop->wq_mutex);
   w->work = NULL; /* Signal uv_cancel() that the work req is done executing. */
@@ -758,6 +769,7 @@ void uv__ffrt_work(ffrt_executor_task_t* data, ffrt_qos_t qos)
     uv_async_send(&loop->wq_async);
   }
   uv_mutex_unlock(&loop->wq_mutex);
+  rdunlock_closed_uv_loop_rwlock();
 }
 
 static void init_once(void)
