@@ -141,6 +141,11 @@ static void uv__async_send(uv_async_t* handle) {
   int r;
   uv_loop_t* loop = handle->loop;
 
+  if (loop == NULL) {
+    UV_LOGE("fatal error! loop is NULL");
+    return;
+  }
+
   buf = "";
   len = 1;
   fd = loop->async_wfd;
