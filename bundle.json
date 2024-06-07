@@ -15,7 +15,7 @@
         "syscap": [
             "SystemCapability.ArkUI.ArkUI.Libuv"
         ],
-        "features": [],
+        "features": ["libuv_use_ffrt"],
         "adapted_system_type": [
             "standard"
         ],
