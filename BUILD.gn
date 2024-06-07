@@ -175,7 +175,7 @@ if (defined(ohos_lite)) {
         "-D_POSIX_C_SOURCE=200112",
       ]
       defines = []
-      if (use_ffrt && is_ohos) {
+      if (libuv_use_ffrt && is_ohos) {
         defines += [ "USE_FFRT" ]
       }
 
@@ -288,7 +288,7 @@ if (defined(ohos_lite)) {
                    "src/unix/random-sysctl-linux.c",
                    "src/unix/proctitle.c",
                  ]
-      if (use_ffrt) {
+      if (libuv_use_ffrt) {
         external_deps += [ "ffrt:libffrt" ]
       }
       if (is_ohos) {

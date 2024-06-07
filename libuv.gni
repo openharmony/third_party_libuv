@@ -12,7 +12,7 @@
 # limitations under the License.
 
 declare_args() {
-  use_ffrt = false
+  libuv_use_ffrt = false
   enable_async_stack = true
   enable_uv_statisic = false
   enable_print_errno_abort = true
