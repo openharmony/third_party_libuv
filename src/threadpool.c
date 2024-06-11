@@ -37,7 +37,6 @@
 #include <stdio.h>
 
 #define MAX_THREADPOOL_SIZE 1024
-#define TASK_NUMBER_WARNING 1000
 #define UV_TRACE_NAME "UV_TRACE"
 
 static uv_rwlock_t g_closed_uv_loop_rwlock;
@@ -664,11 +663,6 @@ void uv__work_done(uv_async_t* handle) {
     if (!QUEUE_EMPTY(&lfields->wq_sub[i])) {
       QUEUE_APPEND(&lfields->wq_sub[i], &wq);
     }
-  }
-
-  if (loop->active_reqs.count > TASK_NUMBER_WARNING
-    && uv_check_data_valid((struct uv_loop_data*)(loop->data)) != 0) {
-    UV_LOGW("The number of task is too much, task number is %{public}u", loop->active_reqs.count);
   }
 #endif
   uv_mutex_unlock(&loop->wq_mutex);
