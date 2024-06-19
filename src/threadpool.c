@@ -716,7 +716,10 @@ static void uv__queue_work(struct uv__work* w) {
 
 static void uv__queue_done(struct uv__work* w, int err) {
   uv_work_t* req;
-
+  if (w == NULL){
+    UV_LOGE("uv__work* w is NULL, returned and unable to call after_work_cb.");
+    return;
+  }
   req = container_of(w, uv_work_t, work_req);
   uv__req_unregister(req->loop, req);
 
