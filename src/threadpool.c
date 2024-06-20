@@ -717,7 +717,7 @@ static void uv__queue_work(struct uv__work* w) {
 static void uv__queue_done(struct uv__work* w, int err) {
   uv_work_t* req;
 
-  if (w == NULL){
+  if (w == NULL) {
     UV_LOGE("uv_work_t is NULL");
     return;
   }
