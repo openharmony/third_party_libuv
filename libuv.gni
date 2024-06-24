@@ -16,4 +16,5 @@ declare_args() {
   enable_async_stack = true
   enable_uv_statisic = false
   enable_print_errno_abort = true
+  use_ohos_dfx = true
 }

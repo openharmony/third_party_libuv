@@ -192,6 +192,10 @@ if (defined(ohos_lite)) {
         cflags +=
             [ "-Wno-frame-address" ]  # for use of __builtin_return_address
       }
+
+      if (use_ohos_dfx && is_ohos) {
+        defines += [ "USE_OHOS_DFX" ]
+      }
     } else if (is_mingw || is_win) {
       cflags += [
         "-Wno-missing-braces",
@@ -292,10 +296,7 @@ if (defined(ohos_lite)) {
         external_deps += [ "ffrt:libffrt" ]
       }
       if (is_ohos) {
-        sources += [
-          "src/unix/ohos/log_ohos.c",
-          "src/unix/ohos/trace_ohos.c",
-        ]
+        sources += [ "src/unix/ohos/trace_ohos.c" ]
         external_deps += [
           "hilog:libhilog",
           "hitrace:hitrace_meter",
@@ -345,6 +346,7 @@ if (defined(ohos_lite)) {
   }
   ohos_shared_library("uv") {
     deps = [ ":libuv_source" ]
+    external_deps = [ "hilog:libhilog" ]
     public_configs = [ ":libuv_config" ]
     subsystem_name = "thirdparty"
     innerapi_tags = [ "platformsdk" ]
