@@ -972,3 +972,14 @@ uint64_t uv_metrics_idle_time(uv_loop_t* loop) {
     idle_time += uv_hrtime() - entry_time;
   return idle_time;
 }
+
+uint64_t uv__get_addr_tag(void* addr) {
+  uint64_t tag = 0;
+
+#ifdef USE_OHOS_DFX
+  if (addr != NULL) {
+    tag = fdsan_create_owner_tag(FDSAN_OWNER_TYPE_FILE, (uint64_t)addr);
+  }
+#endif
+  return tag;
+}
