@@ -379,4 +379,5 @@ struct uv__loop_internal_fields_s {
 #endif
 };
 
+uint64_t uv__get_addr_tag(void* addr);
 #endif /* UV_COMMON_H_ */
