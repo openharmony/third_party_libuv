@@ -184,7 +184,11 @@ void uv__loop_close(uv_loop_t* loop) {
   }
 
   if (loop->backend_fd != -1) {
+#ifdef USE_OHOS_DFX
+    fdsan_close_with_tag(loop->backend_fd, uv__get_addr_tag((void *)&loop->backend_fd));
+#else
     uv__close(loop->backend_fd);
+#endif
     UV_LOGI("close: loop addr is %{public}zu, loop->backend_fd is %{public}d", (size_t)loop, loop->backend_fd);
     loop->backend_fd = -1;
   }

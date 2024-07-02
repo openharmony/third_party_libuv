@@ -193,6 +193,9 @@ static int uv__async_start(uv_loop_t* loop) {
 
   pipefd[0] = err;
   pipefd[1] = -1;
+#ifdef USE_OHOS_DFX
+  fdsan_exchange_owner_tag(pipefd[0], 0, uv__get_addr_tag((void *)&loop->async_io_watcher));
+#endif
 #else
   err = uv__make_pipe(pipefd, UV_NONBLOCK_PIPE);
   if (err < 0)
@@ -231,7 +234,11 @@ void uv__async_stop(uv_loop_t* loop) {
   }
 
   uv__io_stop(loop, &loop->async_io_watcher, POLLIN);
+#if defined(__linux__) && defined(USE_OHOS_DFX)
+  fdsan_close_with_tag(loop->async_io_watcher.fd, uv__get_addr_tag((void *)&loop->async_io_watcher));
+#else
   uv__close(loop->async_io_watcher.fd);
+#endif
   UV_LOGI("close: loop addr is %{public}zu, loop->async_io_watcher.fd is %{public}d",
     (size_t)loop, loop->async_io_watcher.fd);
   loop->async_io_watcher.fd = -1;
