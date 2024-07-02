@@ -64,6 +64,9 @@ int uv__epoll_init(uv_loop_t* loop) {
   }
 
   loop->backend_fd = fd;
+#ifdef USE_OHOS_DFX
+  fdsan_exchange_owner_tag(loop->backend_fd, 0, uv__get_addr_tag((void *)&loop->backend_fd));
+#endif
   UV_LOGI("loop init: loop add is %{public}zu, backend_fd is %{public}d", (size_t)loop, fd);
   if (fd == -1)
     return UV__ERR(errno);
