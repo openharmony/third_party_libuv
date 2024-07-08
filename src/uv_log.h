@@ -23,11 +23,11 @@
 
 #ifdef USE_OHOS_DFX
 #include "hilog/log.h"
-#define UV_LOGI(fmt, ...) HILOG_IMPL(LOG_CORE, LOG_INFO, 0xD00394F, "UV", fmt, ##__VA_ARGS__)
-#define UV_LOGD(fmt, ...) HILOG_IMPL(LOG_CORE, LOG_DEBUG, 0xD00394F, "UV", fmt, ##__VA_ARGS__)
-#define UV_LOGW(fmt, ...) HILOG_IMPL(LOG_CORE, LOG_WARN, 0xD00394F, "UV", fmt, ##__VA_ARGS__)
-#define UV_LOGE(fmt, ...) HILOG_IMPL(LOG_CORE, LOG_ERROR, 0xD00394F, "UV", fmt, ##__VA_ARGS__)
-#define UV_LOGF(fmt, ...) HILOG_IMPL(LOG_CORE, LOG_FATAL, 0xD00394F, "UV", fmt, ##__VA_ARGS__)
+#define UV_LOGI(fmt, ...) HILOG_IMPL(LOG_CORE, LOG_INFO, 0xD003301, "LIBUV", fmt, ##__VA_ARGS__)
+#define UV_LOGD(fmt, ...) HILOG_IMPL(LOG_CORE, LOG_DEBUG, 0xD003301, "LIBUV", fmt, ##__VA_ARGS__)
+#define UV_LOGW(fmt, ...) HILOG_IMPL(LOG_CORE, LOG_WARN, 0xD003301, "LIBUV", fmt, ##__VA_ARGS__)
+#define UV_LOGE(fmt, ...) HILOG_IMPL(LOG_CORE, LOG_ERROR, 0xD003301, "LIBUV", fmt, ##__VA_ARGS__)
+#define UV_LOGF(fmt, ...) HILOG_IMPL(LOG_CORE, LOG_FATAL, 0xD003301, "LIBUV", fmt, ##__VA_ARGS__)
 #else
 enum uv__log_level {
   UV_MIN = 0,
