@@ -19,7 +19,6 @@
  * IN THE SOFTWARE.
  */
 
-#include "uv.h"
 #include "internal.h"
 #include <sys/ioctl.h>
 #include <net/if.h>
@@ -31,7 +30,6 @@
 #include <sys/msg.h>
 #include <sys/resource.h>
 #include "zos-base.h"
-#include "zos-sys-info.h"
 #if defined(__clang__)
 #include "csrsic.h"
 #else
@@ -67,6 +65,9 @@
 
 /* Total number of frames currently on all available frame queues. */
 #define RCEAFC_OFFSET     0x088
+
+/* CPC model length from the CSRSI Service. */
+#define CPCMODEL_LENGTH   16
 
 /* Pointer to the home (current) ASCB. */
 #define PSAAOLD           0x224
@@ -197,11 +198,6 @@ uint64_t uv_get_constrained_memory(void) {
 }
 
 
-uint64_t uv_get_available_memory(void) {
-  return uv_get_free_memory();
-}
-
-
 int uv_resident_set_memory(size_t* rss) {
   char* ascb;
   char* rax;
@@ -257,12 +253,9 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   idx = 0;
   while (idx < *count) {
     cpu_info->speed = *(int*)(info.siv1v2si22v1.si22v1cpucapability);
-    cpu_info->model = uv__malloc(ZOSCPU_MODEL_LENGTH + 1);
-    if (cpu_info->model == NULL) {
-      uv_free_cpu_info(*cpu_infos, idx);
-      return UV_ENOMEM; 
-    }
-    __get_cpu_model(cpu_info->model, ZOSCPU_MODEL_LENGTH + 1);
+    cpu_info->model = uv__malloc(CPCMODEL_LENGTH + 1);
+    memset(cpu_info->model, '\0', CPCMODEL_LENGTH + 1);
+    memcpy(cpu_info->model, info.siv1v2si11v1.si11v1cpcmodel, CPCMODEL_LENGTH);
     cpu_info->cpu_times.user = cpu_usage_avg;
     /* TODO: implement the following */
     cpu_info->cpu_times.sys = 0;
@@ -810,14 +803,13 @@ static int os390_message_queue_handler(uv__os390_epoll* ep) {
 
 void uv__io_poll(uv_loop_t* loop, int timeout) {
   static const int max_safe_timeout = 1789569;
-  uv__loop_internal_fields_t* lfields;
   struct epoll_event events[1024];
   struct epoll_event* pe;
   struct epoll_event e;
   uv__os390_epoll* ep;
   int have_signals;
   int real_timeout;
-  struct uv__queue* q;
+  QUEUE* q;
   uv__io_t* w;
   uint64_t base;
   int count;
@@ -829,19 +821,17 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   int reset_timeout;
 
   if (loop->nfds == 0) {
-    assert(uv__queue_empty(&loop->watcher_queue));
+    assert(QUEUE_EMPTY(&loop->watcher_queue));
     return;
   }
 
-  lfields = uv__get_internal_fields(loop);
-
-  while (!uv__queue_empty(&loop->watcher_queue)) {
+  while (!QUEUE_EMPTY(&loop->watcher_queue)) {
     uv_stream_t* stream;
 
-    q = uv__queue_head(&loop->watcher_queue);
-    uv__queue_remove(q);
-    uv__queue_init(q);
-    w = uv__queue_data(q, uv__io_t, watcher_queue);
+    q = QUEUE_HEAD(&loop->watcher_queue);
+    QUEUE_REMOVE(q);
+    QUEUE_INIT(q);
+    w = QUEUE_DATA(q, uv__io_t, watcher_queue);
 
     assert(w->pevents != 0);
     assert(w->fd >= 0);
@@ -882,7 +872,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   int nevents = 0;
   have_signals = 0;
 
-  if (lfields->flags & UV_METRICS_IDLE_TIME) {
+  if (uv__get_internal_fields(loop)->flags & UV_METRICS_IDLE_TIME) {
     reset_timeout = 1;
     user_timeout = timeout;
     timeout = 0;
@@ -900,12 +890,6 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
 
     if (sizeof(int32_t) == sizeof(long) && timeout >= max_safe_timeout)
       timeout = max_safe_timeout;
-
-    /* Store the current timeout in a location that's globally accessible so
-     * other locations like uv__work_done() can determine whether the queue
-     * of events in the callback were waiting when poll was called.
-     */
-    lfields->current_timeout = timeout;
 
     nfds = epoll_wait(loop->ep, events,
                       ARRAY_SIZE(events), timeout);
@@ -1014,11 +998,9 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       }
     }
 
-    uv__metrics_inc_events(loop, nevents);
     if (reset_timeout != 0) {
       timeout = user_timeout;
       reset_timeout = 0;
-      uv__metrics_inc_events_waiting(loop, nevents);
     }
 
     if (have_signals != 0) {

@@ -33,29 +33,29 @@ TEST_IMPL(udp_bind) {
   uv_udp_t h1, h2;
   int r;
 
-  ASSERT_OK(uv_ip4_addr("0.0.0.0", TEST_PORT, &addr));
+  ASSERT(0 == uv_ip4_addr("0.0.0.0", TEST_PORT, &addr));
 
   loop = uv_default_loop();
 
   r = uv_udp_init(loop, &h1);
-  ASSERT_OK(r);
+  ASSERT(r == 0);
 
   r = uv_udp_init(loop, &h2);
-  ASSERT_OK(r);
+  ASSERT(r == 0);
 
   r = uv_udp_bind(&h1, (const struct sockaddr*) &addr, 0);
-  ASSERT_OK(r);
+  ASSERT(r == 0);
 
   r = uv_udp_bind(&h2, (const struct sockaddr*) &addr, 0);
-  ASSERT_EQ(r, UV_EADDRINUSE);
+  ASSERT(r == UV_EADDRINUSE);
 
   uv_close((uv_handle_t*) &h1, NULL);
   uv_close((uv_handle_t*) &h2, NULL);
 
   r = uv_run(loop, UV_RUN_DEFAULT);
-  ASSERT_OK(r);
+  ASSERT(r == 0);
 
-  MAKE_VALGRIND_HAPPY(loop);
+  MAKE_VALGRIND_HAPPY();
   return 0;
 }
 
@@ -66,28 +66,28 @@ TEST_IMPL(udp_bind_reuseaddr) {
   uv_udp_t h1, h2;
   int r;
 
-  ASSERT_OK(uv_ip4_addr("0.0.0.0", TEST_PORT, &addr));
+  ASSERT(0 == uv_ip4_addr("0.0.0.0", TEST_PORT, &addr));
 
   loop = uv_default_loop();
 
   r = uv_udp_init(loop, &h1);
-  ASSERT_OK(r);
+  ASSERT(r == 0);
 
   r = uv_udp_init(loop, &h2);
-  ASSERT_OK(r);
+  ASSERT(r == 0);
 
   r = uv_udp_bind(&h1, (const struct sockaddr*) &addr, UV_UDP_REUSEADDR);
-  ASSERT_OK(r);
+  ASSERT(r == 0);
 
   r = uv_udp_bind(&h2, (const struct sockaddr*) &addr, UV_UDP_REUSEADDR);
-  ASSERT_OK(r);
+  ASSERT(r == 0);
 
   uv_close((uv_handle_t*) &h1, NULL);
   uv_close((uv_handle_t*) &h2, NULL);
 
   r = uv_run(loop, UV_RUN_DEFAULT);
-  ASSERT_OK(r);
+  ASSERT(r == 0);
 
-  MAKE_VALGRIND_HAPPY(loop);
+  MAKE_VALGRIND_HAPPY();
   return 0;
 }

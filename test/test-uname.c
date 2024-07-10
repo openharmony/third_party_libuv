@@ -39,28 +39,28 @@ TEST_IMPL(uname) {
 
   /* Verify that NULL is handled properly. */
   r = uv_os_uname(NULL);
-  ASSERT_EQ(r, UV_EINVAL);
+  ASSERT(r == UV_EINVAL);
 
   /* Verify the happy path. */
   r = uv_os_uname(&buffer);
-  ASSERT_OK(r);
+  ASSERT(r == 0);
 
 #ifndef _WIN32
-  ASSERT_NE(uname(&buf), -1);
-  ASSERT_OK(strcmp(buffer.sysname, buf.sysname));
-  ASSERT_OK(strcmp(buffer.version, buf.version));
+  ASSERT(uname(&buf) != -1);
+  ASSERT(strcmp(buffer.sysname, buf.sysname) == 0);
+  ASSERT(strcmp(buffer.version, buf.version) == 0);
 
 # ifdef _AIX
   snprintf(temp, sizeof(temp), "%s.%s", buf.version, buf.release);
-  ASSERT_OK(strcmp(buffer.release, temp));
+  ASSERT(strcmp(buffer.release, temp) == 0);
 # else
-  ASSERT_OK(strcmp(buffer.release, buf.release));
+  ASSERT(strcmp(buffer.release, buf.release) == 0);
 # endif /* _AIX */
 
 # if defined(_AIX) || defined(__PASE__)
-  ASSERT_OK(strcmp(buffer.machine, "ppc64"));
+  ASSERT(strcmp(buffer.machine, "ppc64") == 0);
 # else
-  ASSERT_OK(strcmp(buffer.machine, buf.machine));
+  ASSERT(strcmp(buffer.machine, buf.machine) == 0);
 # endif /* defined(_AIX) || defined(__PASE__) */
 
 #endif /* _WIN32 */

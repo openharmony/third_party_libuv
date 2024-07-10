@@ -35,7 +35,7 @@ static int close_cb_called;
 
 
 static void stop_loop_cb(uv_signal_t* signal, int signum) {
-  ASSERT_EQ(signum, SIGPIPE);
+  ASSERT(signum == SIGPIPE);
   uv_stop(signal->loop);
 }
 
@@ -50,7 +50,7 @@ static void close_cb(uv_handle_t *handle) {
 
 static void write_cb(uv_write_t* req, int status) {
   ASSERT_NOT_NULL(req);
-  ASSERT_EQ(status, UV_EPIPE);
+  ASSERT(status == UV_EPIPE);
   free(buf);
   uv_close((uv_handle_t *) &pipe_hdl, close_cb);
   uv_close((uv_handle_t *) &signal_hdl, close_cb);
@@ -62,17 +62,17 @@ TEST_IMPL(signal_pending_on_close) {
   uv_buf_t buffer;
   int r;
 
-  ASSERT_OK(uv_loop_init(&loop));
+  ASSERT(0 == uv_loop_init(&loop));
 
-  ASSERT_OK(uv_signal_init(&loop, &signal_hdl));
+  ASSERT(0 == uv_signal_init(&loop, &signal_hdl));
 
-  ASSERT_OK(uv_signal_start(&signal_hdl, signal_cb, SIGPIPE));
+  ASSERT(0 == uv_signal_start(&signal_hdl, signal_cb, SIGPIPE));
 
-  ASSERT_OK(pipe(pipefds));
+  ASSERT(0 == pipe(pipefds));
 
-  ASSERT_OK(uv_pipe_init(&loop, &pipe_hdl, 0));
+  ASSERT(0 == uv_pipe_init(&loop, &pipe_hdl, 0));
 
-  ASSERT_OK(uv_pipe_open(&pipe_hdl, pipefds[1]));
+  ASSERT(0 == uv_pipe_open(&pipe_hdl, pipefds[1]));
 
   /* Write data large enough so it needs loop iteration */
   buf = malloc(1<<24);
@@ -81,35 +81,38 @@ TEST_IMPL(signal_pending_on_close) {
   buffer = uv_buf_init(buf, 1<<24);
 
   r = uv_write(&write_req, (uv_stream_t *) &pipe_hdl, &buffer, 1, write_cb);
-  ASSERT_OK(r);
+  ASSERT(0 == r);
 
   /* cause a SIGPIPE on write in next iteration */
   close(pipefds[0]);
 
-  ASSERT_OK(uv_run(&loop, UV_RUN_DEFAULT));
+  ASSERT(0 == uv_run(&loop, UV_RUN_DEFAULT));
 
-  ASSERT_EQ(2, close_cb_called);
+  ASSERT(0 == uv_loop_close(&loop));
 
-  MAKE_VALGRIND_HAPPY(&loop);
+  ASSERT(2 == close_cb_called);
+
+  MAKE_VALGRIND_HAPPY();
   return 0;
 }
 
 
 TEST_IMPL(signal_close_loop_alive) {
-  ASSERT_OK(uv_loop_init(&loop));
-  ASSERT_OK(uv_signal_init(&loop, &signal_hdl));
-  ASSERT_OK(uv_signal_start(&signal_hdl, stop_loop_cb, SIGPIPE));
+  ASSERT(0 == uv_loop_init(&loop));
+  ASSERT(0 == uv_signal_init(&loop, &signal_hdl));
+  ASSERT(0 == uv_signal_start(&signal_hdl, stop_loop_cb, SIGPIPE));
   uv_unref((uv_handle_t*) &signal_hdl);
 
-  ASSERT_OK(uv_kill(uv_os_getpid(), SIGPIPE));
-  ASSERT_OK(uv_run(&loop, UV_RUN_DEFAULT));
+  ASSERT(0 == uv_kill(uv_os_getpid(), SIGPIPE));
+  ASSERT(0 == uv_run(&loop, UV_RUN_DEFAULT));
   uv_close((uv_handle_t*) &signal_hdl, close_cb);
-  ASSERT_EQ(1, uv_loop_alive(&loop));
+  ASSERT(1 == uv_loop_alive(&loop));
 
-  ASSERT_OK(uv_run(&loop, UV_RUN_DEFAULT));
-  ASSERT_EQ(1, close_cb_called);
+  ASSERT(0 == uv_run(&loop, UV_RUN_DEFAULT));
+  ASSERT(0 == uv_loop_close(&loop));
+  ASSERT(1 == close_cb_called);
 
-  MAKE_VALGRIND_HAPPY(&loop);
+  MAKE_VALGRIND_HAPPY();
   return 0;
 }
 
