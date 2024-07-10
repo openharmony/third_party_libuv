@@ -49,7 +49,7 @@ static size_t bytes_read;
 static void write_cb(uv_write_t* req, int status) {
   struct write_info* write_info =
       container_of(req, struct write_info, write_req);
-  ASSERT_OK(status);
+  ASSERT(status == 0);
   bytes_written += BUFFERS_PER_WRITE * BUFFER_SIZE;
   free(write_info);
 }
@@ -75,7 +75,7 @@ static void do_write(uv_stream_t* handle) {
 
   r = uv_write(
       &write_info->write_req, handle, bufs, BUFFERS_PER_WRITE, write_cb);
-  ASSERT_OK(r);
+  ASSERT(r == 0);
 }
 
 static void alloc_cb(uv_handle_t* handle,
@@ -94,18 +94,18 @@ static void read_cb(uv_stream_t* handle, ssize_t nread, const uv_buf_t* buf) {
   ssize_t i;
   int r;
 
-  ASSERT_GE(nread, 0);
+  ASSERT(nread >= 0);
   bytes_read += nread;
 
   for (i = 0; i < nread; i++)
-    ASSERT_EQ(buf->base[i], BUFFER_CONTENT);
+    ASSERT(buf->base[i] == BUFFER_CONTENT);
   free(buf->base);
 
   if (bytes_read >= XFER_SIZE) {
     r = uv_read_stop(handle);
-    ASSERT_OK(r);
+    ASSERT(r == 0);
     r = uv_shutdown(&shutdown_req, handle, shutdown_cb);
-    ASSERT_OK(r);
+    ASSERT(r == 0);
   }
 }
 
@@ -121,13 +121,13 @@ static void do_writes_and_reads(uv_stream_t* handle) {
   }
 
   r = uv_read_start(handle, alloc_cb, read_cb);
-  ASSERT_OK(r);
+  ASSERT(r == 0);
 
   r = uv_run(handle->loop, UV_RUN_DEFAULT);
-  ASSERT_OK(r);
+  ASSERT(r == 0);
 
-  ASSERT_EQ(bytes_written, XFER_SIZE);
-  ASSERT_EQ(bytes_read, XFER_SIZE);
+  ASSERT(bytes_written == XFER_SIZE);
+  ASSERT(bytes_read == XFER_SIZE);
 }
 
 TEST_IMPL(ipc_heavy_traffic_deadlock_bug) {
@@ -137,7 +137,7 @@ TEST_IMPL(ipc_heavy_traffic_deadlock_bug) {
   spawn_helper(&pipe, &process, "ipc_helper_heavy_traffic_deadlock_bug");
   do_writes_and_reads((uv_stream_t*) &pipe);
 
-  MAKE_VALGRIND_HAPPY(pipe.loop);
+  MAKE_VALGRIND_HAPPY();
   return 0;
 }
 
@@ -146,14 +146,14 @@ int ipc_helper_heavy_traffic_deadlock_bug(void) {
   int r;
 
   r = uv_pipe_init(uv_default_loop(), &pipe, 1);
-  ASSERT_OK(r);
+  ASSERT(r == 0);
   r = uv_pipe_open(&pipe, 0);
-  ASSERT_OK(r);
+  ASSERT(r == 0);
 
   notify_parent_process();
   do_writes_and_reads((uv_stream_t*) &pipe);
   uv_sleep(100);
 
-  MAKE_VALGRIND_HAPPY(uv_default_loop());
+  MAKE_VALGRIND_HAPPY();
   return 0;
 }

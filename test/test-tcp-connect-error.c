@@ -54,20 +54,20 @@ TEST_IMPL(tcp_connect_error_fault) {
   garbage_addr = (const struct sockaddr_in*) &garbage;
 
   r = uv_tcp_init(uv_default_loop(), &server);
-  ASSERT_OK(r);
+  ASSERT(r == 0);
   r = uv_tcp_connect(&req,
                      &server,
                      (const struct sockaddr*) garbage_addr,
                      connect_cb);
-  ASSERT_EQ(r, UV_EINVAL);
+  ASSERT(r == UV_EINVAL);
 
   uv_close((uv_handle_t*)&server, close_cb);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT_OK(connect_cb_called);
-  ASSERT_EQ(1, close_cb_called);
+  ASSERT(connect_cb_called == 0);
+  ASSERT(close_cb_called == 1);
 
-  MAKE_VALGRIND_HAPPY(uv_default_loop());
+  MAKE_VALGRIND_HAPPY();
   return 0;
 }

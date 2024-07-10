@@ -37,7 +37,7 @@ static void work_cb(uv_work_t* req) {
 
 static void after_work_cb(uv_work_t* req, int status) {
   ASSERT(req);
-  ASSERT_OK(status);
+  ASSERT(status == 0);
 }
 
 
@@ -51,18 +51,17 @@ TEST_IMPL(loop_alive) {
   ASSERT(uv_loop_alive(uv_default_loop()));
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-  ASSERT_OK(r);
+  ASSERT(r == 0);
   ASSERT(!uv_loop_alive(uv_default_loop()));
 
   /* loops with requests are alive */
   r = uv_queue_work(uv_default_loop(), &work_req, work_cb, after_work_cb);
-  ASSERT_OK(r);
+  ASSERT(r == 0);
   ASSERT(uv_loop_alive(uv_default_loop()));
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-  ASSERT_OK(r);
+  ASSERT(r == 0);
   ASSERT(!uv_loop_alive(uv_default_loop()));
 
-  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
