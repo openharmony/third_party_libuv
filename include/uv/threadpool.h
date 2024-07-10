@@ -50,7 +50,7 @@ struct uv_work_dump_info {
 
   struct uv__work* work;
 
-  void* wq[2];
+  struct uv__queue wq;
 };
 
 struct uv__statistic_work {
@@ -58,7 +58,7 @@ struct uv__statistic_work {
   struct uv_work_dump_info* info;
   enum uv_work_state state;
   uint64_t time;
-  void* wq[2];
+  struct uv__queue wq;
 };
 #endif
 
@@ -66,7 +66,7 @@ struct uv__work {
   void (*work)(struct uv__work *w);
   void (*done)(struct uv__work *w, int status);
   struct uv_loop_s* loop;
-  void* wq[2];
+  struct uv__queue wq;
 #ifdef UV_STATISTIC
   struct uv_work_dump_info* info;
 #endif
