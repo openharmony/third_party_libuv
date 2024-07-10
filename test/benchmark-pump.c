@@ -159,9 +159,9 @@ static void start_stats_collection(void) {
   /* Show-stats timer */
   stats_left = STATS_COUNT;
   r = uv_timer_init(loop, &timer_handle);
-  ASSERT_OK(r);
+  ASSERT(r == 0);
   r = uv_timer_start(&timer_handle, show_stats, STATS_INTERVAL, STATS_INTERVAL);
-  ASSERT_OK(r);
+  ASSERT(r == 0);
 
   uv_update_time(loop);
   start_time = uv_now(loop);
@@ -170,7 +170,7 @@ static void start_stats_collection(void) {
 
 static void read_cb(uv_stream_t* stream, ssize_t bytes, const uv_buf_t* buf) {
   if (nrecv_total == 0) {
-    ASSERT_OK(start_time);
+    ASSERT(start_time == 0);
     uv_update_time(loop);
     start_time = uv_now(loop);
   }
@@ -188,7 +188,7 @@ static void read_cb(uv_stream_t* stream, ssize_t bytes, const uv_buf_t* buf) {
 
 
 static void write_cb(uv_write_t* req, int status) {
-  ASSERT_OK(status);
+  ASSERT(status == 0);
 
   req_free((uv_req_t*) req);
 
@@ -209,7 +209,7 @@ static void do_write(uv_stream_t* stream) {
 
   req = (uv_write_t*) req_alloc();
   r = uv_write(req, stream, &buf, 1, write_cb);
-  ASSERT_OK(r);
+  ASSERT(r == 0);
 }
 
 
@@ -220,7 +220,7 @@ static void connect_cb(uv_connect_t* req, int status) {
     fprintf(stderr, "%s", uv_strerror(status));
     fflush(stderr);
   }
-  ASSERT_OK(status);
+  ASSERT(status == 0);
 
   write_sockets++;
   req_free((uv_req_t*) req);
@@ -253,19 +253,19 @@ static void maybe_connect_some(void) {
       tcp = &tcp_write_handles[max_connect_socket++];
 
       r = uv_tcp_init(loop, tcp);
-      ASSERT_OK(r);
+      ASSERT(r == 0);
 
       req = (uv_connect_t*) req_alloc();
       r = uv_tcp_connect(req,
                          tcp,
                          (const struct sockaddr*) &connect_addr,
                          connect_cb);
-      ASSERT_OK(r);
+      ASSERT(r == 0);
     } else {
       pipe = &pipe_write_handles[max_connect_socket++];
 
       r = uv_pipe_init(loop, pipe, 0);
-      ASSERT_OK(r);
+      ASSERT(r == 0);
 
       req = (uv_connect_t*) req_alloc();
       uv_pipe_connect(req, pipe, TEST_PIPENAME, connect_cb);
@@ -278,24 +278,24 @@ static void connection_cb(uv_stream_t* s, int status) {
   uv_stream_t* stream;
   int r;
 
-  ASSERT_PTR_EQ(server, s);
-  ASSERT_OK(status);
+  ASSERT(server == s);
+  ASSERT(status == 0);
 
   if (type == TCP) {
     stream = (uv_stream_t*)malloc(sizeof(uv_tcp_t));
     r = uv_tcp_init(loop, (uv_tcp_t*)stream);
-    ASSERT_OK(r);
+    ASSERT(r == 0);
   } else {
     stream = (uv_stream_t*)malloc(sizeof(uv_pipe_t));
     r = uv_pipe_init(loop, (uv_pipe_t*)stream, 0);
-    ASSERT_OK(r);
+    ASSERT(r == 0);
   }
 
   r = uv_accept(s, stream);
-  ASSERT_OK(r);
+  ASSERT(r == 0);
 
   r = uv_read_start(stream, buf_alloc, read_cb);
-  ASSERT_OK(r);
+  ASSERT(r == 0);
 
   read_sockets++;
   max_read_sockets++;
@@ -379,16 +379,16 @@ HELPER_IMPL(tcp_pump_server) {
   type = TCP;
   loop = uv_default_loop();
 
-  ASSERT_OK(uv_ip4_addr("0.0.0.0", TEST_PORT, &listen_addr));
+  ASSERT(0 == uv_ip4_addr("0.0.0.0", TEST_PORT, &listen_addr));
 
   /* Server */
   server = (uv_stream_t*)&tcpServer;
   r = uv_tcp_init(loop, &tcpServer);
-  ASSERT_OK(r);
+  ASSERT(r == 0);
   r = uv_tcp_bind(&tcpServer, (const struct sockaddr*) &listen_addr, 0);
-  ASSERT_OK(r);
+  ASSERT(r == 0);
   r = uv_listen((uv_stream_t*)&tcpServer, MAX_WRITE_HANDLES, connection_cb);
-  ASSERT_OK(r);
+  ASSERT(r == 0);
 
   notify_parent_process();
   uv_run(loop, UV_RUN_DEFAULT);
@@ -406,40 +406,40 @@ HELPER_IMPL(pipe_pump_server) {
   /* Server */
   server = (uv_stream_t*)&pipeServer;
   r = uv_pipe_init(loop, &pipeServer, 0);
-  ASSERT_OK(r);
+  ASSERT(r == 0);
   r = uv_pipe_bind(&pipeServer, TEST_PIPENAME);
-  ASSERT_OK(r);
+  ASSERT(r == 0);
   r = uv_listen((uv_stream_t*)&pipeServer, MAX_WRITE_HANDLES, connection_cb);
-  ASSERT_OK(r);
+  ASSERT(r == 0);
 
   notify_parent_process();
   uv_run(loop, UV_RUN_DEFAULT);
 
-  MAKE_VALGRIND_HAPPY(loop);
+  MAKE_VALGRIND_HAPPY();
   return 0;
 }
 
 
 static void tcp_pump(int n) {
-  ASSERT_LE(n, MAX_WRITE_HANDLES);
+  ASSERT(n <= MAX_WRITE_HANDLES);
   TARGET_CONNECTIONS = n;
   type = TCP;
 
   loop = uv_default_loop();
 
-  ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT, &connect_addr));
+  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &connect_addr));
 
   /* Start making connections */
   maybe_connect_some();
 
   uv_run(loop, UV_RUN_DEFAULT);
 
-  MAKE_VALGRIND_HAPPY(loop);
+  MAKE_VALGRIND_HAPPY();
 }
 
 
 static void pipe_pump(int n) {
-  ASSERT_LE(n, MAX_WRITE_HANDLES);
+  ASSERT(n <= MAX_WRITE_HANDLES);
   TARGET_CONNECTIONS = n;
   type = PIPE;
 
@@ -450,7 +450,7 @@ static void pipe_pump(int n) {
 
   uv_run(loop, UV_RUN_DEFAULT);
 
-  MAKE_VALGRIND_HAPPY(loop);
+  MAKE_VALGRIND_HAPPY();
 }
 
 

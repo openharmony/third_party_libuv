@@ -25,7 +25,6 @@
 
 #ifdef _WIN32
 # include <io.h>
-# define read _read
 #else
 # include <unistd.h>
 #endif
@@ -66,13 +65,6 @@ typedef BOOL (WINAPI *sCompareObjectHandles)(_In_ HANDLE, _In_ HANDLE);
 
 
 int main(int argc, char **argv) {
-#ifndef _WIN32
-  if (0 == geteuid() && NULL == getenv("UV_RUN_AS_ROOT")) {
-    fprintf(stderr, "The libuv test suite cannot be run as root.\n");
-    return EXIT_FAILURE;
-  }
-#endif
-
   platform_init(argc, argv);
   argv = uv_setup_args(argc, argv);
 
@@ -86,6 +78,10 @@ int main(int argc, char **argv) {
     fflush(stderr);
     return EXIT_FAILURE;
   }
+
+#ifndef __SUNPRO_C
+  return EXIT_SUCCESS;
+#endif
 }
 
 
@@ -146,7 +142,7 @@ static int maybe_run_test(int argc, char **argv) {
   if (strcmp(argv[1], "spawn_helper3") == 0) {
     char buffer[256];
     notify_parent_process();
-    ASSERT_PTR_EQ(buffer, fgets(buffer, sizeof(buffer) - 1, stdin));
+    ASSERT(buffer == fgets(buffer, sizeof(buffer) - 1, stdin));
     buffer[sizeof(buffer) - 1] = '\0';
     fputs(buffer, stdout);
     return 1;
@@ -184,10 +180,10 @@ static int maybe_run_test(int argc, char **argv) {
     notify_parent_process();
 
     r = fprintf(stdout, "hello world\n");
-    ASSERT_GT(r, 0);
+    ASSERT(r > 0);
 
     r = fprintf(stderr, "hello errworld\n");
-    ASSERT_GT(r, 0);
+    ASSERT(r > 0);
 
     return 1;
   }
@@ -203,7 +199,7 @@ static int maybe_run_test(int argc, char **argv) {
     ASSERT_NOT_NULL(test);
 
     r = fprintf(stdout, "%s", test);
-    ASSERT_GT(r, 0);
+    ASSERT(r > 0);
 
     return 1;
   }
@@ -217,24 +213,23 @@ static int maybe_run_test(int argc, char **argv) {
     sCompareObjectHandles pCompareObjectHandles; /* function introduced in Windows 10 */
 #endif
     notify_parent_process();
-    ASSERT_EQ(sizeof(closed_fd), read(0, &closed_fd, sizeof(closed_fd)));
-    ASSERT_EQ(sizeof(open_fd), read(0, &open_fd, sizeof(open_fd)));
+    ASSERT(sizeof(closed_fd) == read(0, &closed_fd, sizeof(closed_fd)));
+    ASSERT(sizeof(open_fd) == read(0, &open_fd, sizeof(open_fd)));
 #ifdef _WIN32
-    ASSERT_GT((intptr_t) closed_fd, 0);
-    ASSERT_GT((intptr_t) open_fd, 0);
-    ASSERT_NE(0, GetHandleInformation(open_fd, &flags));
+    ASSERT((intptr_t) closed_fd > 0);
+    ASSERT((intptr_t) open_fd > 0);
+    ASSERT(0 != GetHandleInformation(open_fd, &flags));
     kernelbase_module = GetModuleHandleA("kernelbase.dll");
     pCompareObjectHandles = (sCompareObjectHandles)
         GetProcAddress(kernelbase_module, "CompareObjectHandles");
-    ASSERT_NE(pCompareObjectHandles == NULL || \
-              !pCompareObjectHandles(open_fd, closed_fd), 0);
+    ASSERT(pCompareObjectHandles == NULL || !pCompareObjectHandles(open_fd, closed_fd));
 #else
-    ASSERT_GT(open_fd, 2);
-    ASSERT_GT(closed_fd, 2);
+    ASSERT(open_fd > 2);
+    ASSERT(closed_fd > 2);
 # if defined(__PASE__)  /* On IBMi PASE, write() returns 1 */
-    ASSERT_EQ(1, write(closed_fd, "x", 1));
+    ASSERT(1 == write(closed_fd, "x", 1));
 # else
-    ASSERT_EQ(-1, write(closed_fd, "x", 1));
+    ASSERT(-1 == write(closed_fd, "x", 1));
 # endif  /* !__PASE__ */
 #endif
     return 1;
@@ -251,8 +246,8 @@ static int maybe_run_test(int argc, char **argv) {
     uv_uid_t uid = atoi(argv[2]);
     uv_gid_t gid = atoi(argv[3]);
 
-    ASSERT_EQ(uid, getuid());
-    ASSERT_EQ(gid, getgid());
+    ASSERT(uid == getuid());
+    ASSERT(gid == getgid());
     notify_parent_process();
 
     return 1;
