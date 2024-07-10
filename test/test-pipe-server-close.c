@@ -35,15 +35,15 @@ static int pipe_client_connect_cb_called = 0;
 
 
 static void pipe_close_cb(uv_handle_t* handle) {
-  ASSERT_NE(handle == (uv_handle_t*) &pipe_client ||
-            handle == (uv_handle_t*) &pipe_server, 0);
+  ASSERT(handle == (uv_handle_t*) &pipe_client ||
+         handle == (uv_handle_t*) &pipe_server);
   pipe_close_cb_called++;
 }
 
 
 static void pipe_client_connect_cb(uv_connect_t* req, int status) {
-  ASSERT_PTR_EQ(req, &connect_req);
-  ASSERT_OK(status);
+  ASSERT(req == &connect_req);
+  ASSERT(status == 0);
 
   pipe_client_connect_cb_called++;
 
@@ -56,7 +56,7 @@ static void pipe_server_connection_cb(uv_stream_t* handle, int status) {
   /* This function *may* be called, depending on whether accept or the
    * connection callback is called first.
    */
-  ASSERT_OK(status);
+  ASSERT(status == 0);
 }
 
 
@@ -71,24 +71,24 @@ TEST_IMPL(pipe_server_close) {
   ASSERT_NOT_NULL(loop);
 
   r = uv_pipe_init(loop, &pipe_server, 0);
-  ASSERT_OK(r);
+  ASSERT(r == 0);
 
   r = uv_pipe_bind(&pipe_server, TEST_PIPENAME);
-  ASSERT_OK(r);
+  ASSERT(r == 0);
 
   r = uv_listen((uv_stream_t*) &pipe_server, 0, pipe_server_connection_cb);
-  ASSERT_OK(r);
+  ASSERT(r == 0);
 
   r = uv_pipe_init(loop, &pipe_client, 0);
-  ASSERT_OK(r);
+  ASSERT(r == 0);
 
   uv_pipe_connect(&connect_req, &pipe_client, TEST_PIPENAME, pipe_client_connect_cb);
 
   r = uv_run(loop, UV_RUN_DEFAULT);
-  ASSERT_OK(r);
-  ASSERT_EQ(1, pipe_client_connect_cb_called);
-  ASSERT_EQ(2, pipe_close_cb_called);
+  ASSERT(r == 0);
+  ASSERT(pipe_client_connect_cb_called == 1);
+  ASSERT(pipe_close_cb_called == 2);
 
-  MAKE_VALGRIND_HAPPY(loop);
+  MAKE_VALGRIND_HAPPY();
   return 0;
 }

@@ -35,9 +35,6 @@ TEST_IMPL(get_currentexe) {
 #if defined(__QEMU__)
   RETURN_SKIP("Test does not currently work in QEMU");
 #endif
-#if defined(__OpenBSD__)
-  RETURN_SKIP("Test does not currently work in OpenBSD");
-#endif
 
   char buffer[PATHMAX];
   char path[PATHMAX];
@@ -60,43 +57,43 @@ TEST_IMPL(get_currentexe) {
    * executable_path.
    */
   ASSERT(match && !strcmp(match, path));
-  ASSERT_EQ(size, strlen(buffer));
+  ASSERT(size == strlen(buffer));
 
   /* Negative tests */
   size = sizeof(buffer) / sizeof(buffer[0]);
   r = uv_exepath(NULL, &size);
-  ASSERT_EQ(r, UV_EINVAL);
+  ASSERT(r == UV_EINVAL);
 
   r = uv_exepath(buffer, NULL);
-  ASSERT_EQ(r, UV_EINVAL);
+  ASSERT(r == UV_EINVAL);
 
   size = 0;
   r = uv_exepath(buffer, &size);
-  ASSERT_EQ(r, UV_EINVAL);
+  ASSERT(r == UV_EINVAL);
 
   memset(buffer, -1, sizeof(buffer));
 
   size = 1;
   r = uv_exepath(buffer, &size);
-  ASSERT_OK(r);
-  ASSERT_OK(size);
-  ASSERT_EQ(buffer[0], '\0');
+  ASSERT(r == 0);
+  ASSERT(size == 0);
+  ASSERT(buffer[0] == '\0');
 
   memset(buffer, -1, sizeof(buffer));
 
   size = 2;
   r = uv_exepath(buffer, &size);
-  ASSERT_OK(r);
-  ASSERT_EQ(1, size);
-  ASSERT_NE(buffer[0], '\0');
-  ASSERT_EQ(buffer[1], '\0');
+  ASSERT(r == 0);
+  ASSERT(size == 1);
+  ASSERT(buffer[0] != '\0');
+  ASSERT(buffer[1] == '\0');
 
   /* Verify uv_exepath is not affected by uv_set_process_title(). */
   r = uv_set_process_title("foobar");
-  ASSERT_OK(r);
+  ASSERT_EQ(r, 0);
   size = sizeof(buffer);
   r = uv_exepath(buffer, &size);
-  ASSERT_OK(r);
+  ASSERT_EQ(r, 0);
 
   match = strstr(buffer, path);
   /* Verify that the path returned from uv_exepath is a subdirectory of

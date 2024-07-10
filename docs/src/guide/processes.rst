@@ -53,8 +53,6 @@ ID of the child process.
 The exit callback will be invoked with the *exit status* and the type of *signal*
 which caused the exit.
 
-Note that it is important **not** to call ``uv_close`` before the exit callback.
-
 .. rubric:: spawn/main.c
 .. literalinclude:: ../../code/spawn/main.c
     :language: c
@@ -128,8 +126,7 @@ of ``uv_kill`` is::
 
 For processes started using libuv, you may use ``uv_process_kill`` instead,
 which accepts the ``uv_process_t`` watcher as the first argument, rather than
-the pid. In this case, **remember to call** ``uv_close`` on the watcher _after_
-the exit callback has been called.
+the pid. In this case, **remember to call** ``uv_close`` on the watcher.
 
 Signals
 -------

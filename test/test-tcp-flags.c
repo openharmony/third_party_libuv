@@ -34,19 +34,19 @@ TEST_IMPL(tcp_flags) {
   loop = uv_default_loop();
 
   r = uv_tcp_init(loop, &handle);
-  ASSERT_OK(r);
+  ASSERT(r == 0);
 
   r = uv_tcp_nodelay(&handle, 1);
-  ASSERT_OK(r);
+  ASSERT(r == 0);
 
   r = uv_tcp_keepalive(&handle, 1, 60);
-  ASSERT_OK(r);
+  ASSERT(r == 0);
 
   uv_close((uv_handle_t*)&handle, NULL);
 
   r = uv_run(loop, UV_RUN_DEFAULT);
-  ASSERT_OK(r);
+  ASSERT(r == 0);
 
-  MAKE_VALGRIND_HAPPY(loop);
+  MAKE_VALGRIND_HAPPY();
   return 0;
 }

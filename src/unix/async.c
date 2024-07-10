@@ -24,10 +24,10 @@
 
 #include "uv.h"
 #include "internal.h"
+#include "atomic-ops.h"
 #include "uv_log.h"
 
 #include <errno.h>
-#include <stdatomic.h>
 #include <stdio.h>  /* snprintf() */
 #include <assert.h>
 #include <stdlib.h>
@@ -54,7 +54,7 @@ int uv_async_init(uv_loop_t* loop, uv_async_t* handle, uv_async_cb async_cb) {
   handle->async_cb = async_cb;
   handle->pending = 0;
 
-  uv__queue_insert_tail(&loop->async_handles, &handle->queue);
+  QUEUE_INSERT_TAIL(&loop->async_handles, &handle->queue);
   uv__handle_start(handle);
 
   return 0;
@@ -62,29 +62,23 @@ int uv_async_init(uv_loop_t* loop, uv_async_t* handle, uv_async_cb async_cb) {
 
 
 int uv_async_send(uv_async_t* handle) {
-  _Atomic int* pending;
-
-  pending = (_Atomic int*) &handle->pending;
-  
-
   /* Do a cheap read first. */
-  if (atomic_load_explicit(pending, memory_order_relaxed) != 0)
+  if (ACCESS_ONCE(int, handle->pending) != 0)
     return 0;
 
-  /* Wake up the other thread's event loop. */
-  if (atomic_exchange(pending, 1) != 0)
+  /* Tell the other thread we're busy with the handle. */
+  if (cmpxchgi(&handle->pending, 0, 1) != 0)
     return 0;
 
   /* Wake up the other thread's event loop. */
   uv__async_send(handle);
+
   return 0;
 }
 
-
-
 void uv__async_close(uv_async_t* handle) {
-  atomic_exchange((_Atomic int*) &handle->pending, 0);
-  uv__queue_remove(&handle->queue);
+  cmpxchgi(&handle->pending, 1, 0);
+  QUEUE_REMOVE(&handle->queue);
   uv__handle_stop(handle);
 }
 
@@ -92,10 +86,9 @@ void uv__async_close(uv_async_t* handle) {
 static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   char buf[1024];
   ssize_t r;
-  struct uv__queue queue;
-  struct uv__queue* q;
+  QUEUE queue;
+  QUEUE* q;
   uv_async_t* h;
-  _Atomic int *pending;
 
   assert(w == &loop->async_io_watcher);
 
@@ -122,18 +115,16 @@ static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 #endif
   }
 
-  uv__queue_move(&loop->async_handles, &queue);
-  while (!uv__queue_empty(&queue)) {
-    q = uv__queue_head(&queue);
-    h = uv__queue_data(q, uv_async_t, queue);
+  QUEUE_MOVE(&loop->async_handles, &queue);
+  while (!QUEUE_EMPTY(&queue)) {
+    q = QUEUE_HEAD(&queue);
+    h = QUEUE_DATA(q, uv_async_t, queue);
 
-    uv__queue_remove(q);
-    uv__queue_insert_tail(&loop->async_handles, q);
+    QUEUE_REMOVE(q);
+    QUEUE_INSERT_TAIL(&loop->async_handles, q);
 
-    /* Atomically fetch and clear pending flag */
-    pending = (_Atomic int*) &h->pending;
-    if (atomic_exchange(pending, 0) == 0)
-      continue;
+    if (0 == cmpxchgi(&h->pending, 1, 0))
+      continue;  /* Not pending. */
 
     if (h->async_cb == NULL)
       continue;
@@ -148,8 +139,8 @@ static void uv__async_send(uv_async_t* handle) {
   ssize_t len;
   int fd;
   int r;
-
   uv_loop_t* loop = handle->loop;
+
   if (loop == NULL) {
     UV_LOGE("fatal error! loop is NULL");
     return;
@@ -170,7 +161,7 @@ static void uv__async_send(uv_async_t* handle) {
 
   do
     r = write(fd, buf, len);
-  while (r == -1 && errno == EINTR && atomic_load_explicit((_Atomic int*) &handle->pending, memory_order_relaxed) == 1);
+  while (r == -1 && errno == EINTR && ACCESS_ONCE(int, handle->pending) == 1);
 
   if (r == len)
     return;
@@ -236,8 +227,8 @@ void uv__async_stop(uv_loop_t* loop) {
 
   if (loop->async_wfd != -1) {
     if (loop->async_wfd != loop->async_io_watcher.fd) {
-      UV_LOGI("close: loop addr is %{public}zu, loop->async_wfd is %{public}d", (size_t)loop, loop->async_wfd);
       uv__close(loop->async_wfd);
+      UV_LOGI("close: loop addr is %{public}zu, loop->async_wfd is %{public}d", (size_t)loop, loop->async_wfd);
     }
     loop->async_wfd = -1;
   }
@@ -252,4 +243,3 @@ void uv__async_stop(uv_loop_t* loop) {
     (size_t)loop, loop->async_io_watcher.fd);
   loop->async_io_watcher.fd = -1;
 }
-
