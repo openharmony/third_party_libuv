@@ -21,7 +21,7 @@
 
 #include "task.h"
 #define uv__malloc malloc
-#include "../src/idna.c"
+#include "../src/idna.h"
 #include <string.h>
 
 TEST_IMPL(utf8_decode1) {
