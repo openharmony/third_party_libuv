@@ -1259,7 +1259,7 @@ static void uv__epoll_ctl_prep(int epollfd,
       abort();
 
     /* File descriptor that's been watched before, update event mask. */
-    if (!epoll_ctl(epollfd, EPOLL_CTL_MOD, fd, e))
+    if (!uv__epoll_ctl(epollfd, EPOLL_CTL_MOD, fd, e))
       return;
 
     abort();
