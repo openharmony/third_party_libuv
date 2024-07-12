@@ -74,6 +74,7 @@ if (defined(ohos_lite)) {
       "src/random.c",
       "src/strscpy.c",
       "src/strtok.c",
+      "src/thread-common.c",
       "src/threadpool.c",
       "src/timer.c",
       "src/uv-common.c",
@@ -84,10 +85,10 @@ if (defined(ohos_lite)) {
       "src/unix/async.c",
       "src/unix/core.c",
       "src/unix/dl.c",
-      "src/unix/epoll.c",
       "src/unix/fs.c",
       "src/unix/getaddrinfo.c",
       "src/unix/getnameinfo.c",
+      "src/unix/linux.c",
       "src/unix/loop-watcher.c",
       "src/unix/loop.c",
       "src/unix/no-fsevents.c",
@@ -130,6 +131,7 @@ if (defined(ohos_lite)) {
     "src/random.c",
     "src/strscpy.c",
     "src/threadpool.c",
+    "src/thread-common.c",
     "src/timer.c",
     "src/uv-common.c",
     "src/uv-data-getter-setters.c",
@@ -138,7 +140,6 @@ if (defined(ohos_lite)) {
   ]
   if (!is_mingw && !is_win) {
     nonwin_srcs = [
-      "src/unix/epoll.c",
       "src/unix/async.c",
       "src/unix/core.c",
       "src/unix/dl.c",
@@ -209,6 +210,7 @@ if (defined(ohos_lite)) {
       defines = [
         "WIN32_LEAN_AND_MEAN",
         "_WIN32_WINNT=0x0600",
+        "_CRT_DECLARE_NONSTDC_NAMES=0",
       ]
 
       libs = [
@@ -218,6 +220,9 @@ if (defined(ohos_lite)) {
         "iphlpapi",
         "userenv",
         "ws2_32",
+        "dbghelp",
+        "ole32",
+        "shell32",
       ]
     }
   }
@@ -249,7 +254,6 @@ if (defined(ohos_lite)) {
                    "src/unix/log_unix.c",
                    "src/unix/trace_unix.c",
                  ]
-      sources -= [ "src/unix/epoll.c" ]
     } else if (is_mingw || is_win) {
       sources += [
         "src/win/async.c",
@@ -282,11 +286,8 @@ if (defined(ohos_lite)) {
       ]
     } else if (is_ohos || (defined(is_android) && is_android)) {
       sources += nonwin_srcs + [
-                   "src/unix/linux-core.c",
-                   "src/unix/linux-inotify.c",
-                   "src/unix/linux-syscalls.c",
+                   "src/unix/linux.c",
                    "src/unix/procfs-exepath.c",
-                   "src/unix/pthread-fixes.c",
                    "src/unix/random-getentropy.c",
                    "src/unix/random-getrandom.c",
                    "src/unix/random-sysctl-linux.c",
@@ -313,9 +314,7 @@ if (defined(ohos_lite)) {
       }
     } else if (is_linux) {
       sources += nonwin_srcs + [
-                   "src/unix/linux-core.c",
-                   "src/unix/linux-inotify.c",
-                   "src/unix/linux-syscalls.c",
+                   "src/unix/linux.c",
                    "src/unix/procfs-exepath.c",
                    "src/unix/random-getrandom.c",
                    "src/unix/random-sysctl-linux.c",
@@ -325,9 +324,7 @@ if (defined(ohos_lite)) {
                  ]
     } else {
       sources += nonwin_srcs + [
-                   "src/unix/linux-core.c",
-                   "src/unix/linux-inotify.c",
-                   "src/unix/linux-syscalls.c",
+                   "src/unix/linux.c",
                    "src/unix/procfs-exepath.c",
                    "src/unix/random-getrandom.c",
                    "src/unix/random-sysctl-linux.c",

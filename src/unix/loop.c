@@ -46,29 +46,33 @@ int uv_loop_init(uv_loop_t* loop) {
   err = uv_mutex_init(&lfields->loop_metrics.lock);
   if (err)
     goto fail_metrics_mutex_init;
+  memset(&lfields->loop_metrics.metrics,
+         0,
+         sizeof(lfields->loop_metrics.metrics));
 
   heap_init((struct heap*) &loop->timer_heap);
-  QUEUE_INIT(&loop->wq);
+  uv__queue_init(&loop->wq);
 #ifdef USE_FFRT
   uv__loop_internal_fields_t* lfields_qos = uv__get_internal_fields(loop);
-  QUEUE_INIT(&(lfields_qos->wq_sub[uv_qos_background]));
-  QUEUE_INIT(&(lfields_qos->wq_sub[uv_qos_utility]));
-  QUEUE_INIT(&(lfields_qos->wq_sub[uv_qos_default]));
-  QUEUE_INIT(&(lfields_qos->wq_sub[uv_qos_user_initiated]));
+  uv__queue_init(&(lfields_qos->wq_sub[uv_qos_background]));
+  uv__queue_init(&(lfields_qos->wq_sub[uv_qos_utility]));
+  uv__queue_init(&(lfields_qos->wq_sub[uv_qos_default]));
+  uv__queue_init(&(lfields_qos->wq_sub[uv_qos_user_initiated]));
 #endif
-  QUEUE_INIT(&loop->idle_handles);
-  QUEUE_INIT(&loop->async_handles);
-  QUEUE_INIT(&loop->check_handles);
-  QUEUE_INIT(&loop->prepare_handles);
-  QUEUE_INIT(&loop->handle_queue);
+
+  uv__queue_init(&loop->idle_handles);
+  uv__queue_init(&loop->async_handles);
+  uv__queue_init(&loop->check_handles);
+  uv__queue_init(&loop->prepare_handles);
+  uv__queue_init(&loop->handle_queue);
 
   loop->active_handles = 0;
   loop->active_reqs.count = 0;
   loop->nfds = 0;
   loop->watchers = NULL;
   loop->nwatchers = 0;
-  QUEUE_INIT(&loop->pending_queue);
-  QUEUE_INIT(&loop->watcher_queue);
+  uv__queue_init(&loop->pending_queue);
+  uv__queue_init(&loop->watcher_queue);
 
   loop->closing_handles = NULL;
   uv__update_time(loop);
@@ -87,13 +91,10 @@ int uv_loop_init(uv_loop_t* loop) {
     goto fail_platform_init;
 
   uv__signal_global_once_init();
-  err = uv_signal_init(loop, &loop->child_watcher);
+  err = uv__process_init(loop);
   if (err)
     goto fail_signal_init;
-
-  uv__handle_unref(&loop->child_watcher);
-  loop->child_watcher.flags |= UV_HANDLE_INTERNAL;
-  QUEUE_INIT(&loop->process_handles);
+  uv__queue_init(&loop->process_handles);
 
   err = uv_rwlock_init(&loop->cloexec_lock);
   if (err)
@@ -161,9 +162,9 @@ int uv_loop_fork(uv_loop_t* loop) {
     if (w == NULL)
       continue;
 
-    if (w->pevents != 0 && QUEUE_EMPTY(&w->watcher_queue)) {
+    if (w->pevents != 0 && uv__queue_empty(&w->watcher_queue)) {
       w->events = 0; /* Force re-registration in uv__io_poll. */
-      QUEUE_INSERT_TAIL(&loop->watcher_queue, &w->watcher_queue);
+      uv__queue_insert_tail(&loop->watcher_queue, &w->watcher_queue);
     }
   }
 
@@ -195,13 +196,13 @@ void uv__loop_close(uv_loop_t* loop) {
 
   uv_mutex_lock(&loop->wq_mutex);
 #ifndef USE_FFRT
-  assert(QUEUE_EMPTY(&loop->wq) && "thread pool work queue not empty!");
+  assert(uv__queue_empty(&loop->wq) && "thread pool work queue not empty!");
 #else
   uv__loop_internal_fields_t* lfields_qos = uv__get_internal_fields(loop);
-  assert(QUEUE_EMPTY(&(lfields_qos->wq_sub[uv_qos_background])) && "thread pool work queue qos_background not empty!");
-  assert(QUEUE_EMPTY(&(lfields_qos->wq_sub[uv_qos_utility])) && "thread pool work queue qos_utility not empty!");
-  assert(QUEUE_EMPTY(&(lfields_qos->wq_sub[uv_qos_default])) && "thread pool work queue qos_default not empty!");
-  assert(QUEUE_EMPTY(&(lfields_qos->wq_sub[uv_qos_user_initiated])) && "thread pool work queue qos_user_initiated not empty!");
+  assert(uv__queue_empty(&(lfields_qos->wq_sub[uv_qos_background])) && "thread pool work queue qos_background not empty!");
+  assert(uv__queue_empty(&(lfields_qos->wq_sub[uv_qos_utility])) && "thread pool work queue qos_utility not empty!");
+  assert(uv__queue_empty(&(lfields_qos->wq_sub[uv_qos_default])) && "thread pool work queue qos_default not empty!");
+  assert(uv__queue_empty(&(lfields_qos->wq_sub[uv_qos_user_initiated])) && "thread pool work queue qos_user_initiated not empty!");
 #endif
   assert(!uv__has_active_reqs(loop));
   uv_mutex_unlock(&loop->wq_mutex);
@@ -214,8 +215,8 @@ void uv__loop_close(uv_loop_t* loop) {
   uv_rwlock_destroy(&loop->cloexec_lock);
 
 #if 0
-  assert(QUEUE_EMPTY(&loop->pending_queue));
-  assert(QUEUE_EMPTY(&loop->watcher_queue));
+  assert(uv__queue_empty(&loop->pending_queue));
+  assert(uv__queue_empty(&loop->watcher_queue));
   assert(loop->nfds == 0);
 #endif
 
