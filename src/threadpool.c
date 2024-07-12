@@ -40,17 +40,19 @@
 #define UV_TRACE_NAME "UV_TRACE"
 
 static uv_rwlock_t g_closed_uv_loop_rwlock;
-
+static uv_once_t once = UV_ONCE_INIT;
 static uv_cond_t cond;
 static uv_mutex_t mutex;
 static unsigned int idle_threads;
+static unsigned int slow_io_work_running;
 static unsigned int nthreads;
 static uv_thread_t* threads;
 static uv_thread_t default_threads[4];
-static QUEUE exit_message;
-static QUEUE wq;
-static QUEUE run_slow_work_message;
-static QUEUE slow_io_pending_wq;
+static struct uv__queue exit_message;
+static struct uv__queue wq;
+static struct uv__queue run_slow_work_message;
+static struct uv__queue slow_io_pending_wq;
+
 
 #ifdef ASYNC_STACKTRACE
 #include "dfx/async_stack/libuv_async_stack.h"
@@ -70,35 +72,35 @@ static uv_thread_t dump_thread;
 
 static void uv_dump_worker(void*  arg) {
   struct uv__statistic_work* w;
-  QUEUE* q;
+  struct uv__queue* q;
   uv_sem_post((uv_sem_t*) arg);
   arg = NULL;
   uv_mutex_lock(&statistic_mutex);
   for (;;) {
-    while (QUEUE_EMPTY(&statistic_works)) {
+    while (uv__queue_empty(&statistic_works)) {
       statistic_idle = 1;
       uv_cond_wait(&dump_cond, &statistic_mutex);
       statistic_idle = 0;
     }
-    q = QUEUE_HEAD(&statistic_works);
+    q = uv__queue_head(&statistic_works);
     if (q == &exit_message) {
       uv_cond_signal(&dump_cond);
       uv_mutex_unlock(&statistic_mutex);
       break;
     }
-    QUEUE_REMOVE(q);
-    QUEUE_INIT(q);
+    uv__queue_remove(q);
+    uv__queue_init(q);
     uv_mutex_unlock(&statistic_mutex);
-    w = QUEUE_DATA(q, struct uv__statistic_work, wq);
+    w = uv__queue_data(q, struct uv__statistic_work, wq);
     w->work(w);
     free(w);
     uv_mutex_lock(&statistic_mutex);
   }
 }
 
-static void post_statistic_work(QUEUE* q) {
+static void post_statistic_work(struct uv__queue* q) {
   uv_mutex_lock(&statistic_mutex);
-  QUEUE_INSERT_TAIL(&statistic_works, q);
+  uv__queue_insert_tail(&statistic_works, q);
   if (statistic_idle)
     uv_cond_signal(&dump_cond);
   uv_mutex_unlock(&statistic_mutex);
@@ -107,11 +109,11 @@ static void post_statistic_work(QUEUE* q) {
 static void uv__queue_work_info(struct uv__statistic_work *work) {
   uv_mutex_lock(&dump_queue_mutex);
   if (dump_queue_size + 1 > MAX_DUMP_QUEUE_SIZE) { /* release works already done */
-    QUEUE* q;
-    QUEUE_FOREACH(q, &dump_queue) {
-      struct uv_work_dump_info* info = QUEUE_DATA(q, struct uv_work_dump_info, wq);
+    struct uv__queue* q;
+    uv__queue_foreach(q, &dump_queue) {
+      struct uv_work_dump_info* info = uv__queue_data(q, struct uv_work_dump_info, wq);
       if (info->state == DONE_END) {
-        QUEUE_REMOVE(q);
+        uv__queue_remove(q);
         free(info);
         dump_queue_size--;
       }
@@ -121,7 +123,7 @@ static void uv__queue_work_info(struct uv__statistic_work *work) {
     }
   }
 
-  QUEUE_INSERT_HEAD(&dump_queue,  &work->info->wq);
+  uv__queue_insert_head(&dump_queue,  &work->info->wq);
   dump_queue_size++;
   uv_mutex_unlock(&dump_queue_mutex);
 }
@@ -174,7 +176,7 @@ static void uv__post_statistic_work(struct uv__work *w, enum uv_work_state state
   dump_work->work = uv__update_work_info;
   dump_work->time = uv__now_timestamp();
   dump_work->state = state;
-  QUEUE_INIT(&dump_work->wq);
+  uv__queue_init(&dump_work->wq);
   post_statistic_work(&dump_work->wq);
 }
 
@@ -184,7 +186,7 @@ static void init_work_dump_queue()
   if (uv_mutex_init(&dump_queue_mutex))
     abort();
   uv_mutex_lock(&dump_queue_mutex);
-  QUEUE_INIT(&dump_queue);
+  uv__queue_init(&dump_queue);
   dump_queue_size = 0;
   uv_mutex_unlock(&dump_queue_mutex);
 
@@ -192,7 +194,7 @@ static void init_work_dump_queue()
   statistic_idle = 1;
   if (uv_mutex_init(&statistic_mutex))
     abort();
-  QUEUE_INIT(&statistic_works);
+  uv__queue_init(&statistic_works);
   uv_sem_t sem;
   if (uv_cond_init(&dump_cond))
     abort();
@@ -215,7 +217,7 @@ void uv_init_dump_info(struct uv_work_dump_info* info, struct uv__work* w) {
   info->done_start_time = 0;
   info->done_end_time = 0;
   info->work = w;
-  QUEUE_INIT(&info->wq);
+  uv__queue_init(&info->wq);
 }
 
 
@@ -228,7 +230,7 @@ void uv_queue_statics(struct uv_work_dump_info* info) {
   dump_work->work = uv__queue_work_info;
   info->queue_time = uv__now_timestamp();
   dump_work->state = WAITING;
-  QUEUE_INIT(&dump_work->wq);
+  uv__queue_init(&dump_work->wq);
   post_statistic_work(&dump_work->wq);
 }
 
@@ -236,15 +238,15 @@ void uv_queue_statics(struct uv_work_dump_info* info) {
 uv_worker_info_t* uv_dump_work_queue(int* size) {
 #ifdef UV_STATISTIC
   uv_mutex_lock(&dump_queue_mutex);
-  if (QUEUE_EMPTY(&dump_queue)) {
+  if (uv__queue_empty(&dump_queue)) {
     return NULL;
   }
   *size = dump_queue_size;
   uv_worker_info_t* dump_info = (uv_worker_info_t*) malloc(sizeof(uv_worker_info_t) * dump_queue_size);
-  QUEUE* q;
+  struct uv__queue* q;
   int i = 0;
-  QUEUE_FOREACH(q, &dump_queue) {
-    struct uv_work_dump_info* info = QUEUE_DATA(q, struct uv_work_dump_info, wq);
+  uv__queue_foreach(q, &dump_queue) {
+    struct uv_work_dump_info* info = uv__queue_data(q, struct uv_work_dump_info, wq);
     dump_info[i].queue_time = info->queue_time;
     dump_info[i].builtin_return_address[0] = info->builtin_return_address[0];
     dump_info[i].builtin_return_address[1] = info->builtin_return_address[1];
@@ -323,7 +325,7 @@ static void uv__cancelled(struct uv__work* w) {
   abort();
 }
 
-static uv_once_t once = UV_ONCE_INIT;
+
 #ifndef USE_FFRT
 static unsigned int slow_io_work_running;
 
@@ -337,7 +339,7 @@ static unsigned int slow_work_thread_threshold(void) {
  */
 static void worker(void* arg) {
   struct uv__work* w;
-  QUEUE* q;
+  struct uv__queue* q;
   int is_slow_work;
 
   uv_sem_post((uv_sem_t*) arg);
@@ -349,49 +351,49 @@ static void worker(void* arg) {
 
     /* Keep waiting while either no work is present or only slow I/O
        and we're at the threshold for that. */
-    while (QUEUE_EMPTY(&wq) ||
-           (QUEUE_HEAD(&wq) == &run_slow_work_message &&
-            QUEUE_NEXT(&run_slow_work_message) == &wq &&
+    while (uv__queue_empty(&wq) ||
+           (uv__queue_head(&wq) == &run_slow_work_message &&
+            uv__queue_next(&run_slow_work_message) == &wq &&
             slow_io_work_running >= slow_work_thread_threshold())) {
       idle_threads += 1;
       uv_cond_wait(&cond, &mutex);
       idle_threads -= 1;
     }
 
-    q = QUEUE_HEAD(&wq);
+    q = uv__queue_head(&wq);
     if (q == &exit_message) {
       uv_cond_signal(&cond);
       uv_mutex_unlock(&mutex);
       break;
     }
 
-    QUEUE_REMOVE(q);
-    QUEUE_INIT(q);  /* Signal uv_cancel() that the work req is executing. */
+    uv__queue_remove(q);
+    uv__queue_init(q);  /* Signal uv_cancel() that the work req is executing. */
 
     is_slow_work = 0;
     if (q == &run_slow_work_message) {
       /* If we're at the slow I/O threshold, re-schedule until after all
          other work in the queue is done. */
       if (slow_io_work_running >= slow_work_thread_threshold()) {
-        QUEUE_INSERT_TAIL(&wq, q);
+        uv__queue_insert_tail(&wq, q);
         continue;
       }
 
       /* If we encountered a request to run slow I/O work but there is none
          to run, that means it's cancelled => Start over. */
-      if (QUEUE_EMPTY(&slow_io_pending_wq))
+      if (uv__queue_empty(&slow_io_pending_wq))
         continue;
 
       is_slow_work = 1;
       slow_io_work_running++;
 
-      q = QUEUE_HEAD(&slow_io_pending_wq);
-      QUEUE_REMOVE(q);
-      QUEUE_INIT(q);
+      q = uv__queue_head(&slow_io_pending_wq);
+      uv__queue_remove(q);
+      uv__queue_init(q);
 
       /* If there is more slow I/O work, schedule it to be run as well. */
-      if (!QUEUE_EMPTY(&slow_io_pending_wq)) {
-        QUEUE_INSERT_TAIL(&wq, &run_slow_work_message);
+      if (!uv__queue_empty(&slow_io_pending_wq)) {
+        uv__queue_insert_tail(&wq, &run_slow_work_message);
         if (idle_threads > 0)
           uv_cond_signal(&cond);
       }
@@ -399,7 +401,7 @@ static void worker(void* arg) {
 
     uv_mutex_unlock(&mutex);
 
-    w = QUEUE_DATA(q, struct uv__work, wq);
+    w = uv__queue_data(q, struct uv__work, wq);
 #ifdef UV_STATISTIC
     uv__post_statistic_work(w, WORK_EXECUTING);
 #endif
@@ -414,7 +416,7 @@ static void worker(void* arg) {
     uv_mutex_lock(&w->loop->wq_mutex);
     w->work = NULL;  /* Signal uv_cancel() that the work req is done
                         executing. */
-    QUEUE_INSERT_TAIL(&w->loop->wq, &w->wq);
+    uv__queue_insert_tail(&w->loop->wq, &w->wq);
     uv_async_send(&w->loop->wq_async);
     uv_mutex_unlock(&w->loop->wq_mutex);
 
@@ -430,12 +432,12 @@ static void worker(void* arg) {
 #endif
 
 
-static void post(QUEUE* q, enum uv__work_kind kind) {
+static void post(struct uv__queue* q, enum uv__work_kind kind) {
   uv_mutex_lock(&mutex);
   if (kind == UV__WORK_SLOW_IO) {
     /* Insert into a separate queue. */
-    QUEUE_INSERT_TAIL(&slow_io_pending_wq, q);
-    if (!QUEUE_EMPTY(&run_slow_work_message)) {
+    uv__queue_insert_tail(&slow_io_pending_wq, q);
+    if (!uv__queue_empty(&run_slow_work_message)) {
       /* Running slow I/O tasks is already scheduled => Nothing to do here.
          The worker that runs said other task will schedule this one as well. */
       uv_mutex_unlock(&mutex);
@@ -444,7 +446,7 @@ static void post(QUEUE* q, enum uv__work_kind kind) {
     q = &run_slow_work_message;
   }
 
-  QUEUE_INSERT_TAIL(&wq, q);
+  uv__queue_insert_tail(&wq, q);
   if (idle_threads > 0)
     uv_cond_signal(&cond);
   uv_mutex_unlock(&mutex);
@@ -489,6 +491,7 @@ void uv__threadpool_cleanup(void) {
 
 #ifndef USE_FFRT
 static void init_threads(void) {
+  uv_thread_options_t config;
   unsigned int i;
   const char* val;
   uv_sem_t sem;
@@ -517,15 +520,18 @@ static void init_threads(void) {
   if (uv_mutex_init(&mutex))
     abort();
 
-  QUEUE_INIT(&wq);
-  QUEUE_INIT(&slow_io_pending_wq);
-  QUEUE_INIT(&run_slow_work_message);
+  uv__queue_init(&wq);
+  uv__queue_init(&slow_io_pending_wq);
+  uv__queue_init(&run_slow_work_message);
 
   if (uv_sem_init(&sem, 0))
     abort();
 
+  config.flags = UV_THREAD_HAS_STACK_SIZE;
+  config.stack_size = 8u << 20;  /* 8 MB */
+
   for (i = 0; i < nthreads; i++)
-    if (uv_thread_create(threads + i, worker, &sem))
+    if (uv_thread_create_ex(threads + i, &config, worker, &sem))
       abort();
 
   for (i = 0; i < nthreads; i++)
@@ -582,6 +588,9 @@ static void uv__task_done_wrapper(void* work, int status) {
 #endif
 
 
+/* TODO(bnoordhuis) teach libuv how to cancel file operations
+ * that go through io_uring instead of the thread pool.
+ */
 static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
   int cancelled;
 
@@ -595,15 +604,15 @@ static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
   uv_mutex_lock(&mutex);
   uv_mutex_lock(&w->loop->wq_mutex);
 
-  cancelled = !QUEUE_EMPTY(&w->wq) && w->work != NULL;
+  cancelled = !uv__queue_empty(&w->wq) && w->work != NULL;
   if (cancelled)
-    QUEUE_REMOVE(&w->wq);
+    uv__queue_remove(&w->wq);
 
   uv_mutex_unlock(&w->loop->wq_mutex);
   uv_mutex_unlock(&mutex);
 #else
   uv_mutex_lock(&w->loop->wq_mutex);
-  cancelled = !QUEUE_EMPTY(&w->wq) && w->work != NULL
+  cancelled = !uv__queue_empty(&w->wq) && w->work != NULL
     && ffrt_executor_task_cancel(w, (ffrt_qos_t)(intptr_t)req->reserved[0]);
   uv_mutex_unlock(&w->loop->wq_mutex);
 #endif
@@ -616,7 +625,7 @@ static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
   w->work = uv__cancelled;
   uv_mutex_lock(&loop->wq_mutex);
 #ifndef USE_FFRT
-  QUEUE_INSERT_TAIL(&loop->wq, &w->wq);
+  uv__queue_insert_tail(&loop->wq, &w->wq);
   uv_async_send(&loop->wq_async);
 #else
   uv__loop_internal_fields_t* lfields = uv__get_internal_fields(w->loop);
@@ -628,7 +637,7 @@ static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
       (UV_EVENT_MAGIC_OFFSET << UV_EVENT_MAGIC_OFFSETBITS));
     addr->post_task_func(addr->event_handler, uv__task_done_wrapper, (void*)w, status, qos);
   } else {
-    QUEUE_INSERT_TAIL(&(lfields->wq_sub[qos]), &w->wq);
+    uv__queue_insert_tail(&(lfields->wq_sub[qos]), &w->wq);
     uv_async_send(&loop->wq_async);
   }
 #endif
@@ -642,9 +651,10 @@ static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
 void uv__work_done(uv_async_t* handle) {
   struct uv__work* w;
   uv_loop_t* loop;
-  QUEUE* q;
-  QUEUE wq;
+  struct uv__queue* q;
+  struct uv__queue wq;
   int err;
+  int nevents;
 
   loop = container_of(handle, uv_loop_t, wq_async);
   rdlock_closed_uv_loop_rwlock();
@@ -654,23 +664,24 @@ void uv__work_done(uv_async_t* handle) {
   }
   uv_mutex_lock(&loop->wq_mutex);
 #ifndef USE_FFRT
-  QUEUE_MOVE(&loop->wq, &wq);
+  uv__queue_move(&loop->wq, &wq);
 #else
   uv__loop_internal_fields_t* lfields = uv__get_internal_fields(loop);
   int i;
-  QUEUE_INIT(&wq);
+  uv__queue_init(&wq);
   for (i = 3; i >= 0; i--) {
-    if (!QUEUE_EMPTY(&lfields->wq_sub[i])) {
-      QUEUE_APPEND(&lfields->wq_sub[i], &wq);
+    if (!uv__queue_empty(&lfields->wq_sub[i])) {
+      uv__queue_append(&lfields->wq_sub[i], &wq);
     }
   }
 #endif
   uv_mutex_unlock(&loop->wq_mutex);
 
+  nevents = 0;
   uv_start_trace(UV_TRACE_TAG, UV_TRACE_NAME);
-  while (!QUEUE_EMPTY(&wq)) {
-    q = QUEUE_HEAD(&wq);
-    QUEUE_REMOVE(q);
+  while (!uv__queue_empty(&wq)) {
+    q = uv__queue_head(&wq);
+    uv__queue_remove(q);
 
     w = container_of(q, struct uv__work, wq);
     err = (w->work == uv__cancelled) ? UV_ECANCELED : 0;
@@ -689,6 +700,7 @@ void uv__work_done(uv_async_t* handle) {
     LibuvSetStackId((uint64_t)req->reserved[3]);
 #endif
     w->done(w, err);
+    nevents++;
 #ifdef UV_STATISTIC
     dump_work->time = uv__now_timestamp();
     dump_work->state = DONE_END;
@@ -698,6 +710,19 @@ void uv__work_done(uv_async_t* handle) {
   }
   uv_end_trace(UV_TRACE_TAG);
   rdunlock_closed_uv_loop_rwlock();
+
+  /* This check accomplishes 2 things:
+   * 1. Even if the queue was empty, the call to uv__work_done() should count
+   *    as an event. Which will have been added by the event loop when
+   *    calling this callback.
+   * 2. Prevents accidental wrap around in case nevents == 0 events == 0.
+   */
+  if (nevents > 1) {
+    /* Subtract 1 to counter the call to uv__work_done(). */
+    uv__metrics_inc_events(loop, nevents - 1);
+    if (uv__get_internal_fields(loop)->current_timeout == 0)
+      uv__metrics_inc_events_waiting(loop, nevents - 1);
+  }
 }
 
 
@@ -747,8 +772,8 @@ void uv__ffrt_work(ffrt_executor_task_t* data, ffrt_qos_t qos)
   if (loop->magic != UV_LOOP_MAGIC
       || !lfields
       || qos >= ARRAY_SIZE(lfields->wq_sub)
-      || !lfields->wq_sub[qos][0]
-      || !lfields->wq_sub[qos][1]) {
+      || !lfields->wq_sub[qos].next
+      || !lfields->wq_sub[qos].prev) {
     rdunlock_closed_uv_loop_rwlock();
     UV_LOGE("uv_loop(%{public}zu:%{public}#x) in task(%p:%p) is invalid",
             (size_t)loop, loop->magic, req->work_cb, req->after_work_cb);
@@ -764,7 +789,7 @@ void uv__ffrt_work(ffrt_executor_task_t* data, ffrt_qos_t qos)
       (UV_EVENT_MAGIC_OFFSET << UV_EVENT_MAGIC_OFFSETBITS));
     addr->post_task_func(addr->event_handler, uv__task_done_wrapper, (void*)w, status, qos);
   } else {
-    QUEUE_INSERT_TAIL(&(lfields->wq_sub[qos]), &w->wq);
+    uv__queue_insert_tail(&(lfields->wq_sub[qos]), &w->wq);
     uv_async_send(&loop->wq_async);
   }
   uv_mutex_unlock(&loop->wq_mutex);
