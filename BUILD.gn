@@ -343,9 +343,11 @@ if (defined(ohos_lite)) {
   }
   ohos_shared_library("uv") {
     deps = [ ":libuv_source" ]
+    cflags = []
     external_deps = [ "hilog:libhilog" ]
     public_configs = [ ":libuv_config" ]
     subsystem_name = "thirdparty"
+    cflags += [ "-fvisibility=hidden" ]
     innerapi_tags = [ "platformsdk" ]
     part_name = "libuv"
     if (is_ohos) {
