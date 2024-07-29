@@ -240,6 +240,7 @@ if (defined(ohos_lite)) {
 
   ohos_source_set("libuv_source") {
     configs = [ ":libuv_config" ]
+    cflags = [ "-fvisibility=hidden" ]
     sources = common_source
     external_deps = []
     if (is_mac || (defined(is_ios) && is_ios)) {
@@ -343,11 +344,9 @@ if (defined(ohos_lite)) {
   }
   ohos_shared_library("uv") {
     deps = [ ":libuv_source" ]
-    cflags = []
     external_deps = [ "hilog:libhilog" ]
     public_configs = [ ":libuv_config" ]
     subsystem_name = "thirdparty"
-    cflags += [ "-fvisibility=hidden" ]
     innerapi_tags = [ "platformsdk" ]
     part_name = "libuv"
     if (is_ohos) {
