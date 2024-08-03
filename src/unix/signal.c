@@ -103,8 +103,15 @@ static void uv__signal_global_reinit(void) {
   if (uv__make_pipe(uv__signal_lock_pipefd, 0))
     abort();
 
-  if (uv__signal_unlock())
+  if (uv__signal_unlock()) {
+#ifdef OHOS_USE_DFX
+    UV_LOGF("errno is %d, uv__signal_lock_pipefd[1] is %d (%s:%s:%d)",
+      errno, uv__signal_lock_pipefd[1], __FILE__, __func__, __LINE__);
+    return;
+#else
     abort();
+#endif
+  }
 }
 
 
@@ -148,14 +155,28 @@ static void uv__signal_block_and_lock(sigset_t* saved_sigmask) {
   if (pthread_sigmask(SIG_SETMASK, &new_mask, saved_sigmask))
     abort();
 
-  if (uv__signal_lock())
+  if (uv__signal_lock()) {
+#ifdef OHOS_USE_DFX
+    UV_LOGF("errno is %d, uv__signal_lock_pipefd[0] is %d (%s:%s:%d)",
+      errno, uv__signal_lock_pipefd[0], __FILE__, __func__, __LINE__);
+    return;
+#else
     abort();
+#endif
+  }
 }
 
 
 static void uv__signal_unlock_and_unblock(sigset_t* saved_sigmask) {
-  if (uv__signal_unlock())
+  if (uv__signal_unlock()) {
+#ifdef OHOS_USE_DFX
+    UV_LOGF("errno is %d, uv__signal_lock_pipefd[1] is %d (%s:%s:%d)",
+      errno, uv__signal_lock_pipefd[1], __FILE__, __func__, __LINE__);
+    return;
+#else
     abort();
+#endif
+  }
 
   if (pthread_sigmask(SIG_SETMASK, saved_sigmask, NULL))
     abort();
@@ -461,8 +482,15 @@ static void uv__signal_event(uv_loop_t* loop,
     }
 
     /* Other errors really should never happen. */
-    if (r == -1)
+    if (r == -1) {
+#ifdef OHOS_USE_DFX
+      UV_LOGF("errno is %d, loop->signal_pipefd[0] is %d (%s:%s:%d)",
+        errno, loop->signal_pipefd[0], __FILE__, __func__, __LINE__);
+      return;
+#else
       abort();
+#endif
+    }
 
     bytes += r;
 

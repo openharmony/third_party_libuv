@@ -313,9 +313,13 @@ int is_uv_loop_good_magic(const uv_loop_t* loop) {
 void on_uv_loop_close(uv_loop_t* loop) {
   time_t t1, t2;
   time(&t1);
+  uv_start_trace(UV_TRACE_TAG, "Get Write Lock");
   uv_rwlock_wrlock(&g_closed_uv_loop_rwlock);
+  uv_end_trace(UV_TRACE_TAG);
   loop->magic = ~UV_LOOP_MAGIC;
+  uv_start_trace(UV_TRACE_TAG, "Release Write Lock");
   uv_rwlock_wrunlock(&g_closed_uv_loop_rwlock);
+  uv_end_trace(UV_TRACE_TAG);
   time(&t2);
   UV_LOGI("uv_loop(%{public}zu) closed in %{public}zds", (size_t)loop, (ssize_t)(t2 - t1));
 }
