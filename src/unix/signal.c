@@ -176,6 +176,7 @@ static void uv__signal_unlock_and_unblock(sigset_t* saved_sigmask) {
 #else
     abort();
 #endif
+  }
 
   if (pthread_sigmask(SIG_SETMASK, saved_sigmask, NULL))
     abort();
