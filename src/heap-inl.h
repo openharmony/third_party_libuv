@@ -178,11 +178,18 @@ HEAP_EXPORT(void heap_remove(struct heap* heap,
     k -= 1;
   }
 
-  heap->nelts -= 1;
-
   /* Unlink the max node. */
   child = *max;
   *max = NULL;
+
+#ifdef OHOS_USE_DFX
+  if (child == NULL) {
+    UV_LOGF("Child is NULL, this may be due to multi-threaded calls.");
+    return;
+  }
+#endif
+
+  heap->nelts -= 1;
 
   if (child == node) {
     /* We're removing either the max or the last node in the tree. */
