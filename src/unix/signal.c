@@ -20,6 +20,7 @@
 
 #include "uv.h"
 #include "internal.h"
+#include "uv_log.h"
 
 #include <assert.h>
 #include <errno.h>
@@ -104,9 +105,8 @@ static void uv__signal_global_reinit(void) {
     abort();
 
   if (uv__signal_unlock()) {
-#ifdef OHOS_USE_DFX
-    UV_LOGF("errno is %d, uv__signal_lock_pipefd[1] is %d (%s:%s:%d)",
-      errno, uv__signal_lock_pipefd[1], __FILE__, __func__, __LINE__);
+#ifdef USE_OHOS_DFX
+    UV_LOGF("errno is %{public}d, uv__signal_lock_pipefd[1] is %{public}d", errno, uv__signal_lock_pipefd[1]);
     return;
 #else
     abort();
@@ -156,9 +156,8 @@ static void uv__signal_block_and_lock(sigset_t* saved_sigmask) {
     abort();
 
   if (uv__signal_lock()) {
-#ifdef OHOS_USE_DFX
-    UV_LOGF("errno is %d, uv__signal_lock_pipefd[0] is %d (%s:%s:%d)",
-      errno, uv__signal_lock_pipefd[0], __FILE__, __func__, __LINE__);
+#ifdef USE_OHOS_DFX
+    UV_LOGF("errno is %{public}d, uv__signal_lock_pipefd[0] is %{public}d", errno, uv__signal_lock_pipefd[0]);
     return;
 #else
     abort();
@@ -169,9 +168,8 @@ static void uv__signal_block_and_lock(sigset_t* saved_sigmask) {
 
 static void uv__signal_unlock_and_unblock(sigset_t* saved_sigmask) {
   if (uv__signal_unlock()) {
-#ifdef OHOS_USE_DFX
-    UV_LOGF("errno is %d, uv__signal_lock_pipefd[1] is %d (%s:%s:%d)",
-      errno, uv__signal_lock_pipefd[1], __FILE__, __func__, __LINE__);
+#ifdef USE_OHOS_DFX
+    UV_LOGF("errno is %{public}d, uv__signal_lock_pipefd[1] is %{public}d", errno, uv__signal_lock_pipefd[1]);
     return;
 #else
     abort();
@@ -483,9 +481,8 @@ static void uv__signal_event(uv_loop_t* loop,
 
     /* Other errors really should never happen. */
     if (r == -1) {
-#ifdef OHOS_USE_DFX
-      UV_LOGF("errno is %d, loop->signal_pipefd[0] is %d (%s:%s:%d)",
-        errno, loop->signal_pipefd[0], __FILE__, __func__, __LINE__);
+#ifdef USE_OHOS_DFX
+      UV_LOGF("errno is %{public}d, loop->signal_pipefd[0] is %{public}d", errno, loop->signal_pipefd[0]);
       return;
 #else
       abort();
