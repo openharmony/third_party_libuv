@@ -666,6 +666,8 @@ void uv__work_done(uv_async_t* handle) {
     rdunlock_closed_uv_loop_rwlock();
     return;
   }
+  rdunlock_closed_uv_loop_rwlock();
+  
   uv_mutex_lock(&loop->wq_mutex);
 #ifndef USE_FFRT
   uv__queue_move(&loop->wq, &wq);
@@ -713,7 +715,6 @@ void uv__work_done(uv_async_t* handle) {
 #endif
   }
   uv_end_trace(UV_TRACE_TAG);
-  rdunlock_closed_uv_loop_rwlock();
 
   /* This check accomplishes 2 things:
    * 1. Even if the queue was empty, the call to uv__work_done() should count
