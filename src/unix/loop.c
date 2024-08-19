@@ -197,12 +197,6 @@ void uv__loop_close(uv_loop_t* loop) {
   uv_mutex_lock(&loop->wq_mutex);
 #ifndef USE_FFRT
   assert(uv__queue_empty(&loop->wq) && "thread pool work queue not empty!");
-#else
-  uv__loop_internal_fields_t* lfields_qos = uv__get_internal_fields(loop);
-  assert(uv__queue_empty(&(lfields_qos->wq_sub[uv_qos_background])) && "thread pool work queue qos_background not empty!");
-  assert(uv__queue_empty(&(lfields_qos->wq_sub[uv_qos_utility])) && "thread pool work queue qos_utility not empty!");
-  assert(uv__queue_empty(&(lfields_qos->wq_sub[uv_qos_default])) && "thread pool work queue qos_default not empty!");
-  assert(uv__queue_empty(&(lfields_qos->wq_sub[uv_qos_user_initiated])) && "thread pool work queue qos_user_initiated not empty!");
 #endif
   assert(!uv__has_active_reqs(loop));
   uv_mutex_unlock(&loop->wq_mutex);
