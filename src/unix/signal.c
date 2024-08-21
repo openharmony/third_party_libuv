@@ -106,7 +106,7 @@ static void uv__signal_global_reinit(void) {
 
   if (uv__signal_unlock()) {
 #ifdef USE_OHOS_DFX
-    UV_LOGF("errno is %{public}d, uv__signal_lock_pipefd[1] is %{public}d", errno, uv__signal_lock_pipefd[1]);
+    UV_LOGF("errno:%{public}d, sig_lock_pfd[1]:%{public}d", errno, uv__signal_lock_pipefd[1]);
     return;
 #else
     abort();
@@ -157,7 +157,7 @@ static void uv__signal_block_and_lock(sigset_t* saved_sigmask) {
 
   if (uv__signal_lock()) {
 #ifdef USE_OHOS_DFX
-    UV_LOGF("errno is %{public}d, uv__signal_lock_pipefd[0] is %{public}d", errno, uv__signal_lock_pipefd[0]);
+    UV_LOGF("errno:%{public}d, sig_lock_pfd[0]:%{public}d", errno, uv__signal_lock_pipefd[0]);
     return;
 #else
     abort();
@@ -169,7 +169,7 @@ static void uv__signal_block_and_lock(sigset_t* saved_sigmask) {
 static void uv__signal_unlock_and_unblock(sigset_t* saved_sigmask) {
   if (uv__signal_unlock()) {
 #ifdef USE_OHOS_DFX
-    UV_LOGF("errno is %{public}d, uv__signal_lock_pipefd[1] is %{public}d", errno, uv__signal_lock_pipefd[1]);
+    UV_LOGF("errno:%{public}d, sig_lock_pfd[1]:%{public}d", errno, uv__signal_lock_pipefd[1]);
     return;
 #else
     abort();
@@ -482,7 +482,7 @@ static void uv__signal_event(uv_loop_t* loop,
     /* Other errors really should never happen. */
     if (r == -1) {
 #ifdef USE_OHOS_DFX
-      UV_LOGF("errno is %{public}d, loop->signal_pipefd[0] is %{public}d", errno, loop->signal_pipefd[0]);
+      UV_LOGF("errno:%{public}d, sig_pfd[0]:%{public}d", errno, loop->signal_pipefd[0]);
       return;
 #else
       abort();

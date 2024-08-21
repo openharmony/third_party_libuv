@@ -44,7 +44,6 @@ static uv_once_t once = UV_ONCE_INIT;
 static uv_cond_t cond;
 static uv_mutex_t mutex;
 static unsigned int idle_threads;
-static unsigned int slow_io_work_running;
 static unsigned int nthreads;
 static uv_thread_t* threads;
 static uv_thread_t default_threads[4];
@@ -305,7 +304,7 @@ int is_uv_loop_good_magic(const uv_loop_t* loop) {
   if (loop->magic == UV_LOOP_MAGIC) {
     return 1;
   }
-  UV_LOGE("uv_loop(%{public}zu:%{public}#x) is invalid", (size_t)loop, loop->magic);
+  UV_LOGE("loop:(%{public}zu:%{public}#x) invalid", (size_t)loop, loop->magic);
   return 0;
 }
 
@@ -321,7 +320,7 @@ void on_uv_loop_close(uv_loop_t* loop) {
   uv_rwlock_wrunlock(&g_closed_uv_loop_rwlock);
   uv_end_trace(UV_TRACE_TAG);
   time(&t2);
-  UV_LOGI("uv_loop(%{public}zu) closed in %{public}zds", (size_t)loop, (ssize_t)(t2 - t1));
+  UV_LOGI("loop:(%{public}zu) closed in %{public}zds", (size_t)loop, (ssize_t)(t2 - t1));
 }
 
 
