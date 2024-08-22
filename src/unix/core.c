@@ -1938,7 +1938,7 @@ int uv_register_task_to_event(struct uv_loop_s* loop, uv_post_task func, void* h
   if (data == NULL)
     return -1;
   if ((uint64_t)data >> UV_EVENT_MAGIC_OFFSETBITS != 0x0) {
-    UV_LOGE("malloc address error!");
+    UV_LOGE("malloc address error");
     free(data);
     return -1;
   }
@@ -1979,7 +1979,7 @@ int uv_check_data_valid(struct uv_loop_data* data) {
   struct uv_loop_data* addr = (struct uv_loop_data*)((uint64_t)data -
     (UV_EVENT_MAGIC_OFFSET << UV_EVENT_MAGIC_OFFSETBITS));
   if (addr->post_task_func == NULL) {
-    UV_LOGE("post_task_func is NULL");
+    UV_LOGE("post_task_func NULL");
     return -1;
   }
   return 0;

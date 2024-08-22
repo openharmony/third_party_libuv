@@ -64,6 +64,13 @@ int uv_async_init(uv_loop_t* loop, uv_async_t* handle, uv_async_cb async_cb) {
 int uv_async_send(uv_async_t* handle) {
   _Atomic int* pending;
 
+#ifdef USE_OHOS_DFX
+  if (handle == NULL) {
+    UV_LOGF("handle is NULL");
+    return -1;
+  }
+#endif
+
   pending = (_Atomic int*) &handle->pending;
   
 
@@ -151,7 +158,7 @@ static void uv__async_send(uv_async_t* handle) {
 
   uv_loop_t* loop = handle->loop;
   if (loop == NULL) {
-    UV_LOGE("fatal error! loop is NULL");
+    UV_LOGF("loop is NULL");
     return;
   }
 
@@ -214,8 +221,7 @@ static int uv__async_start(uv_loop_t* loop) {
   uv__io_init(&loop->async_io_watcher, uv__async_io, pipefd[0]);
   uv__io_start(loop, &loop->async_io_watcher, POLLIN);
   loop->async_wfd = pipefd[1];
-  UV_LOGI("open: loop addr is %{public}zu, loop->async_wfd is %{public}d,"
-    "loop->async_io_watcher.fd is %{public}d", (size_t)loop, loop->async_wfd, pipefd[0]);
+  UV_LOGI("open:%{public}zu, pipefd[0]:%{public}d", (size_t)loop, pipefd[0]);
   return 0;
 }
 
@@ -236,7 +242,7 @@ void uv__async_stop(uv_loop_t* loop) {
 
   if (loop->async_wfd != -1) {
     if (loop->async_wfd != loop->async_io_watcher.fd) {
-      UV_LOGI("close: loop addr is %{public}zu, loop->async_wfd is %{public}d", (size_t)loop, loop->async_wfd);
+      UV_LOGI("close:%{public}zu, async_wfd:%{public}d", (size_t)loop, loop->async_wfd);
       uv__close(loop->async_wfd);
     }
     loop->async_wfd = -1;
@@ -248,8 +254,7 @@ void uv__async_stop(uv_loop_t* loop) {
 #else
   uv__close(loop->async_io_watcher.fd);
 #endif
-  UV_LOGI("close: loop addr is %{public}zu, loop->async_io_watcher.fd is %{public}d",
-    (size_t)loop, loop->async_io_watcher.fd);
+  UV_LOGI("close:%{public}zu, async_io_wfd:%{public}d", (size_t)loop, loop->async_io_watcher.fd);
   loop->async_io_watcher.fd = -1;
 }
 

@@ -671,7 +671,7 @@ int uv__platform_loop_init(uv_loop_t* loop) {
 
   uv__iou_init(loop->backend_fd, &lfields->iou, 64, UV__IORING_SETUP_SQPOLL);
   uv__iou_init(loop->backend_fd, &lfields->ctl, 256, 0);
-  UV_LOGI("loop init: loop add is %{public}zu, backend_fd is %{public}d", (size_t)loop, loop->backend_fd);
+  UV_LOGI("init:%{public}zu, backend_fd:%{public}d", (size_t)loop, loop->backend_fd);
   return 0;
 }
 
