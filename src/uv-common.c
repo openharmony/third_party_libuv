@@ -856,28 +856,24 @@ int uv_loop_close(uv_loop_t* loop) {
 #ifndef NDEBUG
   void* saved_data;
 #endif
-#ifdef USE_OHOS_DFX
-  UV_LOGI("Loop %{public}zu going to close", (size_t)loop);
-#endif
 
+  on_uv_loop_close(loop);
   if (uv__has_active_reqs(loop)) {
 #ifdef USE_OHOS_DFX
-    UV_LOGI("Unable to close loop %{public}zu, %{public}d active request(s) remains", (size_t)loop, loop->active_reqs.count);
+    UV_LOGI("loop:%{public}zu, active reqs:%{public}u", (size_t)loop, loop->active_reqs.count);
 #endif
     return UV_EBUSY;
   }
-
   uv__queue_foreach(q, &loop->handle_queue) {
     h = uv__queue_data(q, uv_handle_t, handle_queue);
     if (!(h->flags & UV_HANDLE_INTERNAL)) {
 #ifdef USE_OHOS_DFX
-      UV_LOGI("Unable to close loop %{public}zu, handle %{public}zu active", (size_t)loop, (size_t)h);
+      UV_LOGI("loop:%{public}zu, active handle:%{public}zu", (size_t)loop, (size_t)h);
 #endif
       return UV_EBUSY;
     }
   }
 
-  on_uv_loop_close(loop);
   uv__loop_close(loop);
 
 #ifndef NDEBUG

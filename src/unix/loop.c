@@ -33,7 +33,7 @@ int uv_loop_init(uv_loop_t* loop) {
   void* saved_data;
   int err;
 
-  UV_LOGI("loop init: loop addr is %{public}zu", (size_t)loop);
+  UV_LOGI("init:%{public}zu", (size_t)loop);
   saved_data = loop->data;
   memset(loop, 0, sizeof(*loop));
   loop->data = saved_data;
@@ -190,19 +190,13 @@ void uv__loop_close(uv_loop_t* loop) {
 #else
     uv__close(loop->backend_fd);
 #endif
-    UV_LOGI("close: loop addr is %{public}zu, loop->backend_fd is %{public}d", (size_t)loop, loop->backend_fd);
+    UV_LOGI("close:%{public}zu, backend_fd:%{public}d", (size_t)loop, loop->backend_fd);
     loop->backend_fd = -1;
   }
 
   uv_mutex_lock(&loop->wq_mutex);
 #ifndef USE_FFRT
   assert(uv__queue_empty(&loop->wq) && "thread pool work queue not empty!");
-#else
-  uv__loop_internal_fields_t* lfields_qos = uv__get_internal_fields(loop);
-  assert(uv__queue_empty(&(lfields_qos->wq_sub[uv_qos_background])) && "thread pool work queue qos_background not empty!");
-  assert(uv__queue_empty(&(lfields_qos->wq_sub[uv_qos_utility])) && "thread pool work queue qos_utility not empty!");
-  assert(uv__queue_empty(&(lfields_qos->wq_sub[uv_qos_default])) && "thread pool work queue qos_default not empty!");
-  assert(uv__queue_empty(&(lfields_qos->wq_sub[uv_qos_user_initiated])) && "thread pool work queue qos_user_initiated not empty!");
 #endif
   assert(!uv__has_active_reqs(loop));
   uv_mutex_unlock(&loop->wq_mutex);
