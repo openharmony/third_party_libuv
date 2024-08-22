@@ -1510,8 +1510,13 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
         continue;
       }
 
+#ifndef USE_OHOS_DFX
       assert(fd >= 0);
       assert((unsigned) fd < loop->nwatchers);
+#else
+      if (fd < 0 || (unsigned) fd >= loop->nwatchers)
+        continue;
+#endif
 
       w = loop->watchers[fd];
 
