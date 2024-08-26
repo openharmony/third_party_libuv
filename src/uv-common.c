@@ -857,7 +857,6 @@ int uv_loop_close(uv_loop_t* loop) {
   void* saved_data;
 #endif
 
-  on_uv_loop_close(loop);
   if (uv__has_active_reqs(loop)) {
 #ifdef USE_OHOS_DFX
     UV_LOGI("loop:%{public}zu, active reqs:%{public}u", (size_t)loop, loop->active_reqs.count);
@@ -874,6 +873,7 @@ int uv_loop_close(uv_loop_t* loop) {
     }
   }
 
+  on_uv_loop_close(loop);
   uv__loop_close(loop);
 
 #ifndef NDEBUG
@@ -897,6 +897,10 @@ void uv_loop_delete(uv_loop_t* loop) {
   err = uv_loop_close(loop);
   (void) err;    /* Squelch compiler warnings. */
   assert(err == 0);
+#ifdef USE_OHOS_DFX
+  if (err != 0)
+    on_uv_loop_close(loop);
+#endif
   if (loop != default_loop)
     uv__free(loop);
 }
