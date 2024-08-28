@@ -833,6 +833,9 @@ void uv__work_submit(uv_loop_t* loop,
       ffrt_task_attr_set_qos(&attr, ffrt_qos_background);
       break;
     default:
+#ifdef USE_OHOS_DFX
+      UV_LOGI("Unknown work kind");
+#endif
       return;
   }
 
