@@ -21,6 +21,7 @@
 
 #include "uv.h"
 #include "uv-common.h"
+#include "uv_log.h"
 
 #include <assert.h>
 #include <errno.h>
@@ -856,10 +857,7 @@ int uv_loop_close(uv_loop_t* loop) {
   void* saved_data;
 #endif
 
-  if (uv__has_active_reqs(loop)) {
-#ifdef USE_OHOS_DFX
-    UV_LOGI("loop:%{public}zu, active reqs:%{public}u", (size_t)loop, loop->active_reqs.count);
-#endif
+  if (uv__has_active_reqs(loop))
     return UV_EBUSY;
 
   uv__queue_foreach(q, &loop->handle_queue) {
