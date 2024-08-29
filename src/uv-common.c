@@ -21,7 +21,6 @@
 
 #include "uv.h"
 #include "uv-common.h"
-#include "uv_log.h"
 
 #include <assert.h>
 #include <errno.h>
