@@ -889,6 +889,10 @@ void uv_loop_delete(uv_loop_t* loop) {
   err = uv_loop_close(loop);
   (void) err;    /* Squelch compiler warnings. */
   assert(err == 0);
+#ifdef USE_OHOS_DFX
+  if (err != 0)
+    on_uv_loop_close(loop);
+#endif
   if (loop != default_loop)
     uv__free(loop);
 }
