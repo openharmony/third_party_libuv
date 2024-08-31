@@ -35,6 +35,11 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+
+#ifdef USE_FFRT
+#include <sys/epoll.h>
+#endif
+
 #define UV_LOOP_MAGIC 0x100B100BU
 #define uv__msan_unpoison(p, n)                                               \
   do {                                                                        \
@@ -262,6 +267,10 @@ int uv__fd_exists(uv_loop_t* loop, int fd);
 void uv__async_stop(uv_loop_t* loop);
 int uv__async_fork(uv_loop_t* loop);
 
+#ifdef USE_FFRT
+/* epoll */
+int uv__epoll_ctl(int epoll_fd, int op, int fd, struct epoll_event* event);
+#endif
 
 /* loop */
 void uv__run_idle(uv_loop_t* loop);
@@ -472,4 +481,11 @@ uv__fs_copy_file_range(int fd_in,
 #define UV__CPU_AFFINITY_SUPPORTED 0
 #endif
 
+UV_UNUSED(static unsigned int self_increase(unsigned int* ptr)) {
+  return __sync_fetch_and_add(ptr, 1);
+}
+
+UV_UNUSED(static unsigned int self_decrease(unsigned int* ptr)) {
+  return __sync_fetch_and_sub(ptr, 1);
+}
 #endif /* UV_UNIX_INTERNAL_H_ */
