@@ -236,6 +236,21 @@ void uv__threadpool_cleanup(void);
 #define uv__has_active_reqs(loop)                                             \
   ((loop)->active_reqs.count > 0)
 
+#if defined(USE_FFRT) && defined(USE_OHOS_DFX)
+#define uv__req_register(loop, req)                                           \
+  do {                                                                        \
+    self_increase((unsigned int*)(&((loop)->active_reqs.count)));             \
+  }                                                                           \
+  while (0)
+
+#define uv__req_unregister(loop, req)                                         \
+  do {                                                                        \
+    if(!uv__has_active_reqs(loop))                                            \
+      break;                                                                  \
+    self_decrease((unsigned int*)(&((loop)->active_reqs.count)));             \
+  }                                                                           \
+  while (0)
+#else
 #define uv__req_register(loop, req)                                           \
   do {                                                                        \
     (loop)->active_reqs.count++;                                              \
@@ -248,6 +263,7 @@ void uv__threadpool_cleanup(void);
     (loop)->active_reqs.count--;                                              \
   }                                                                           \
   while (0)
+#endif
 
 #define uv__has_active_handles(loop)                                          \
   ((loop)->active_handles > 0)

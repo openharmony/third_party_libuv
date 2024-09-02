@@ -55,6 +55,7 @@
 #include <sys/utsname.h>
 #include <time.h>
 #include <unistd.h>
+
 #ifdef USE_FFRT
 #include "ffrt.h"
 #include "c/executor_task.h"
@@ -73,7 +74,7 @@ int uv__epoll_ctl(int epoll_fd, int op, int fd, struct epoll_event* event) {
 #ifdef USE_FFRT
   if (ffrt_get_cur_task() != NULL) {
     ffrt_qos_t qos = ffrt_this_task_get_qos();
-    return ffrt_epoll_ctl(qos, op, fd, event->events, NULL, NULL);
+    return ffrt_epoll_ctl(qos, op, fd, event == NULL ? 0 : event->events, NULL, NULL);
   }
 #endif
   return epoll_ctl(epoll_fd, op, fd ,event);
