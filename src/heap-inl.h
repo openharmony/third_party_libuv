@@ -177,7 +177,7 @@ HEAP_EXPORT(void heap_remove(struct heap* heap,
     path >>= 1;
     k -= 1;
   }
-  
+
   heap->nelts -= 1;
 
   /* Unlink the max node. */
