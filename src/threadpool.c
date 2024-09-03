@@ -35,6 +35,9 @@
 #include "ffrt_inner.h"
 #endif
 #include <stdio.h>
+#ifdef ASYNC_STACKTRACE
+#include "dfx/async_stack/libuv_async_stack.h"
+#endif
 
 #define MAX_THREADPOOL_SIZE 1024
 #define UV_TRACE_NAME "UV_TRACE"
@@ -52,10 +55,6 @@ static struct uv__queue wq;
 static struct uv__queue run_slow_work_message;
 static struct uv__queue slow_io_pending_wq;
 
-
-#ifdef ASYNC_STACKTRACE
-#include "dfx/async_stack/libuv_async_stack.h"
-#endif
 
 #ifdef UV_STATISTIC
 #define MAX_DUMP_QUEUE_SIZE 200
@@ -634,7 +633,7 @@ static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
   uv__loop_internal_fields_t* lfields = uv__get_internal_fields(w->loop);
   int qos = (ffrt_qos_t)(intptr_t)req->reserved[0];
 
-  if (uv_check_data_valid((struct uv_loop_data*)(loop->data)) == 0) {
+  if (uv_check_data_valid((struct uv_loop_data*)(w->loop->data)) == 0) {
     int status = (w->work == uv__cancelled) ? UV_ECANCELED : 0;
     struct uv_loop_data* addr = (struct uv_loop_data*)((uint64_t)w->loop->data -
       (UV_EVENT_MAGIC_OFFSET << UV_EVENT_MAGIC_OFFSETBITS));
@@ -666,7 +665,7 @@ void uv__work_done(uv_async_t* handle) {
     return;
   }
   rdunlock_closed_uv_loop_rwlock();
-  
+
   uv_mutex_lock(&loop->wq_mutex);
 #ifndef USE_FFRT
   uv__queue_move(&loop->wq, &wq);

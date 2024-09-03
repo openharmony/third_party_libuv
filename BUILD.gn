@@ -246,13 +246,13 @@ if (defined(ohos_lite)) {
     if (is_mac || (defined(is_ios) && is_ios)) {
       sources += nonwin_srcs + [
                    "src/unix/bsd-ifaddrs.c",
-                   "src/unix/kqueue.c",
-                   "src/unix/random-getentropy.c",
                    "src/unix/darwin-proctitle.c",
                    "src/unix/darwin.c",
                    "src/unix/fsevents.c",
-                   "src/unix/os390-proctitle.c",
+                   "src/unix/kqueue.c",
                    "src/unix/log_unix.c",
+                   "src/unix/os390-proctitle.c",
+                   "src/unix/random-getentropy.c",
                    "src/unix/trace_unix.c",
                  ]
     } else if (is_mingw || is_win) {
@@ -289,10 +289,10 @@ if (defined(ohos_lite)) {
       sources += nonwin_srcs + [
                    "src/unix/linux.c",
                    "src/unix/procfs-exepath.c",
+                   "src/unix/proctitle.c",
                    "src/unix/random-getentropy.c",
                    "src/unix/random-getrandom.c",
                    "src/unix/random-sysctl-linux.c",
-                   "src/unix/proctitle.c",
                  ]
       if (libuv_use_ffrt) {
         external_deps += [ "ffrt:libffrt" ]
@@ -307,9 +307,11 @@ if (defined(ohos_lite)) {
           "hitrace:hitrace_meter",
         ]
       }
+
       if (is_ohos && enable_async_stack) {
         sources += [ "src/dfx/async_stack/libuv_async_stack.c" ]
       }
+
       if (is_android) {
         sources += [
           "src/win/log_win.c",
@@ -319,20 +321,20 @@ if (defined(ohos_lite)) {
     } else if (is_linux) {
       sources += nonwin_srcs + [
                    "src/unix/linux.c",
+                   "src/unix/log_unix.c",
                    "src/unix/procfs-exepath.c",
+                   "src/unix/proctitle.c",
                    "src/unix/random-getrandom.c",
                    "src/unix/random-sysctl-linux.c",
-                   "src/unix/proctitle.c",
-                   "src/unix/log_unix.c",
                    "src/unix/trace_unix.c",
                  ]
     } else {
       sources += nonwin_srcs + [
                    "src/unix/linux.c",
                    "src/unix/procfs-exepath.c",
+                   "src/unix/proctitle.c",
                    "src/unix/random-getrandom.c",
                    "src/unix/random-sysctl-linux.c",
-                   "src/unix/proctitle.c",
                  ]
     }
     subsystem_name = "thirdparty"
