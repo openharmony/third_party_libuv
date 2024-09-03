@@ -1954,13 +1954,13 @@ int uv_register_task_to_event(struct uv_loop_s* loop, uv_post_task func, void* h
 #endif
 }
 
+
 int uv_unregister_task_to_event(struct uv_loop_s* loop)
 {
 #if defined(__aarch64__)
   if (loop == NULL || loop->data == NULL ||
     ((uint64_t)loop->data >> UV_EVENT_MAGIC_OFFSETBITS) != (uint64_t)(UV_EVENT_MAGIC_OFFSET))
     return -1;
-
   loop->data = (struct uv_loop_data*)((uint64_t)loop->data -
     (UV_EVENT_MAGIC_OFFSET << UV_EVENT_MAGIC_OFFSETBITS));
   free(loop->data);
@@ -1970,6 +1970,7 @@ int uv_unregister_task_to_event(struct uv_loop_s* loop)
   return -1;
 #endif
 }
+
 
 int uv_check_data_valid(struct uv_loop_data* data) {
 #if defined(__aarch64__)
@@ -1987,3 +1988,4 @@ int uv_check_data_valid(struct uv_loop_data* data) {
   return -1;
 #endif
 }
+

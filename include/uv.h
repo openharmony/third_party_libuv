@@ -226,6 +226,7 @@ typedef enum {
 
 #define UV_EVENT_MAGIC_OFFSET 0x12345ULL
 #define UV_EVENT_MAGIC_OFFSETBITS 44
+
 /* Handle types. */
 typedef struct uv_loop_s uv_loop_t;
 typedef struct uv_handle_s uv_handle_t;
@@ -1953,6 +1954,7 @@ UV_EXTERN void uv_loop_set_data(uv_loop_t*, void* data);
 UV_EXTERN int uv_register_task_to_event(struct uv_loop_s* loop, uv_post_task func, void* handler);
 UV_EXTERN int uv_unregister_task_to_event(struct uv_loop_s* loop);
 UV_EXTERN int uv_check_data_valid(struct uv_loop_data* data);
+
 /* String utilities needed internally for dealing with Windows. */
 size_t uv_utf16_length_as_wtf8(const uint16_t* utf16,
                                ssize_t utf16_len);
