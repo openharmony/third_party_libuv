@@ -1245,6 +1245,7 @@ static void uv__epoll_ctl_prep(int epollfd,
   struct epoll_event* pe;
   uint32_t mask;
   uint32_t slot;
+  int ret = 0;
 
   if (ctl->ringfd == -1) {
     if (!uv__epoll_ctl(epollfd, op, fd, e))
@@ -1253,17 +1254,35 @@ static void uv__epoll_ctl_prep(int epollfd,
     if (op == EPOLL_CTL_DEL)
       return;  /* Ignore errors, may be racing with another thread. */
 
-    if (op != EPOLL_CTL_ADD)
+    if (op != EPOLL_CTL_ADD) {
+#ifdef PRINT_ERRNO_ABORT
+      UV_ERRNO_ABORT("errno is %d, fd is %d, backend_fd is %d(%s:%s:%d)",
+        errno, fd, epollfd, __FILE__, __func__, __LINE__);
+#else
       abort();
+#endif
+    }
 
-    if (errno != EEXIST)
+    if (errno != EEXIST) {
+#ifdef PRINT_ERRNO_ABORT
+      UV_ERRNO_ABORT("errno is %d, fd is %d, backend_fd is %d(%s:%s:%d)",
+        errno, fd, epollfd, __FILE__, __func__, __LINE__);
+#else
       abort();
+#endif
+    }
 
     /* File descriptor that's been watched before, update event mask. */
-    if (!uv__epoll_ctl(epollfd, EPOLL_CTL_MOD, fd, e))
+    ret = uv__epoll_ctl(epollfd, EPOLL_CTL_MOD, fd, e);
+    if (!ret)
       return;
 
+#ifdef PRINT_ERRNO_ABORT
+    UV_ERRNO_ABORT("errno is %d, uv__epoll_ctl ret is %d, fd is %d, backend_fd is %d(%s:%s:%d)",
+      errno, ret, fd, epollfd, __FILE__, __func__, __LINE__);
+#else
     abort();
+#endif
   } else {
     mask = ctl->sqmask;
     slot = (*ctl->sqtail)++ & mask;
