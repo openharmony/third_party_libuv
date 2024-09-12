@@ -239,6 +239,7 @@ if (defined(ohos_lite)) {
   }
 
   ohos_source_set("libuv_source") {
+    branch_protector_ret = "pac_ret"
     configs = [ ":libuv_config" ]
     cflags = [ "-fvisibility=hidden" ]
     sources = common_source
