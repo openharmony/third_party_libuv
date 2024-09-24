@@ -515,6 +515,9 @@ static int uv__use_io_uring(void) {
 
     atomic_store_explicit(&use_io_uring, use, memory_order_relaxed);
   }
+#if defined(USE_OHOS_DFX)
+  use = -1;
+#endif
 
   return use > 0;
 #endif
