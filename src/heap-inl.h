@@ -138,12 +138,6 @@ HEAP_EXPORT(void heap_insert(struct heap* heap,
 
   /* Insert the new node. */
   newnode->parent = *parent;
-#ifdef USE_OHOS_DFX
-  if (child == NULL || newnode == NULL) {
-    UV_LOGF("Child is NULL, this may be due to multi-threaded calls.");
-    return;
-  }
-#endif
   *child = newnode;
   heap->nelts += 1;
 
@@ -185,16 +179,16 @@ HEAP_EXPORT(void heap_remove(struct heap* heap,
     k -= 1;
   }
 
+  /* Unlink the max node. */
+  child = *max;
+  *max = NULL;
+
 #ifdef USE_OHOS_DFX
   if (child == NULL) {
     UV_LOGF("Child is NULL, this may be due to multi-threaded calls.");
     return;
   }
 #endif
-  
-  /* Unlink the max node. */
-  child = *max;
-  *max = NULL;
   heap->nelts -= 1;
 
   if (child == node) {
