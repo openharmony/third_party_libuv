@@ -35,6 +35,9 @@
 #include "ffrt_inner.h"
 #endif
 #include <stdio.h>
+#ifdef ASYNC_STACKTRACE
+#include "dfx/async_stack/libuv_async_stack.h"
+#endif
 
 #define MAX_THREADPOOL_SIZE 1024
 #define UV_TRACE_NAME "UV_TRACE"
@@ -44,7 +47,6 @@ static uv_once_t once = UV_ONCE_INIT;
 static uv_cond_t cond;
 static uv_mutex_t mutex;
 static unsigned int idle_threads;
-static unsigned int slow_io_work_running;
 static unsigned int nthreads;
 static uv_thread_t* threads;
 static uv_thread_t default_threads[4];
@@ -53,10 +55,6 @@ static struct uv__queue wq;
 static struct uv__queue run_slow_work_message;
 static struct uv__queue slow_io_pending_wq;
 
-
-#ifdef ASYNC_STACKTRACE
-#include "dfx/async_stack/libuv_async_stack.h"
-#endif
 
 #ifdef UV_STATISTIC
 #define MAX_DUMP_QUEUE_SIZE 200
@@ -305,7 +303,7 @@ int is_uv_loop_good_magic(const uv_loop_t* loop) {
   if (loop->magic == UV_LOOP_MAGIC) {
     return 1;
   }
-  UV_LOGE("uv_loop(%{public}zu:%{public}#x) is invalid", (size_t)loop, loop->magic);
+  UV_LOGE("loop:(%{public}zu:%{public}#x) invalid", (size_t)loop, loop->magic);
   return 0;
 }
 
@@ -313,11 +311,15 @@ int is_uv_loop_good_magic(const uv_loop_t* loop) {
 void on_uv_loop_close(uv_loop_t* loop) {
   time_t t1, t2;
   time(&t1);
+  uv_start_trace(UV_TRACE_TAG, "Get Write Lock");
   uv_rwlock_wrlock(&g_closed_uv_loop_rwlock);
+  uv_end_trace(UV_TRACE_TAG);
   loop->magic = ~UV_LOOP_MAGIC;
+  uv_start_trace(UV_TRACE_TAG, "Release Write Lock");
   uv_rwlock_wrunlock(&g_closed_uv_loop_rwlock);
+  uv_end_trace(UV_TRACE_TAG);
   time(&t2);
-  UV_LOGI("uv_loop(%{public}zu) closed in %{public}zds", (size_t)loop, (ssize_t)(t2 - t1));
+  UV_LOGI("loop:(%{public}zu) closed in %{public}zds", (size_t)loop, (ssize_t)(t2 - t1));
 }
 
 
@@ -631,7 +633,7 @@ static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
   uv__loop_internal_fields_t* lfields = uv__get_internal_fields(w->loop);
   int qos = (ffrt_qos_t)(intptr_t)req->reserved[0];
 
-  if (uv_check_data_valid((struct uv_loop_data*)(loop->data)) == 0) {
+  if (uv_check_data_valid((struct uv_loop_data*)(w->loop->data)) == 0) {
     int status = (w->work == uv__cancelled) ? UV_ECANCELED : 0;
     struct uv_loop_data* addr = (struct uv_loop_data*)((uint64_t)w->loop->data -
       (UV_EVENT_MAGIC_OFFSET << UV_EVENT_MAGIC_OFFSETBITS));
@@ -663,7 +665,7 @@ void uv__work_done(uv_async_t* handle) {
     return;
   }
   rdunlock_closed_uv_loop_rwlock();
-  
+
   uv_mutex_lock(&loop->wq_mutex);
 #ifndef USE_FFRT
   uv__queue_move(&loop->wq, &wq);
@@ -830,6 +832,9 @@ void uv__work_submit(uv_loop_t* loop,
       ffrt_task_attr_set_qos(&attr, ffrt_qos_background);
       break;
     default:
+#ifdef USE_OHOS_DFX
+      UV_LOGI("Unknown work kind");
+#endif
       return;
   }
 

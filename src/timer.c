@@ -97,7 +97,6 @@ int uv_timer_start(uv_timer_t* handle,
               (struct heap_node*) &handle->heap_node,
               timer_less_than);
   uv__handle_start(handle);
-
 #ifdef __linux__
   if (uv_check_data_valid((struct uv_loop_data*)handle->loop->data) == 0) {
     uv_async_send(&handle->loop->wq_async);
