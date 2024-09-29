@@ -17,6 +17,7 @@
 #define UV_SRC_HEAP_H_
 
 #include <stddef.h>  /* NULL */
+#include "uv_log.h"
 
 #if defined(__GNUC__)
 # define HEAP_EXPORT(declaration) __attribute__((unused)) static declaration
@@ -178,11 +179,17 @@ HEAP_EXPORT(void heap_remove(struct heap* heap,
     k -= 1;
   }
 
-  heap->nelts -= 1;
 
   /* Unlink the max node. */
   child = *max;
   *max = NULL;
+#ifdef USE_OHOS_DFX
+  if (child == NULL) {
+    UV_LOGF("Child is NULL, this may be due to multi-threaded calls.");
+    return;
+  }
+#endif
+  heap->nelts -= 1;
 
   if (child == node) {
     /* We're removing either the max or the last node in the tree. */
