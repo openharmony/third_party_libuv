@@ -20,6 +20,7 @@
 
 #include "uv.h"
 #include "internal.h"
+#include "uv_log.h"
 
 #include <assert.h>
 #include <errno.h>
@@ -103,8 +104,14 @@ static void uv__signal_global_reinit(void) {
   if (uv__make_pipe(uv__signal_lock_pipefd, 0))
     abort();
 
-  if (uv__signal_unlock())
+  if (uv__signal_unlock()) {
+#ifdef USE_OHOS_DFX
+    UV_LOGF("errno:%{public}d, sig_lock_pfd[1]:%{public}d", errno, uv__signal_lock_pipefd[1]);
+    return;
+#else
     abort();
+#endif
+  }
 }
 
 
@@ -148,14 +155,26 @@ static void uv__signal_block_and_lock(sigset_t* saved_sigmask) {
   if (pthread_sigmask(SIG_SETMASK, &new_mask, saved_sigmask))
     abort();
 
-  if (uv__signal_lock())
+  if (uv__signal_lock()) {
+#ifdef USE_OHOS_DFX
+    UV_LOGF("errno:%{public}d, sig_lock_pfd[0]:%{public}d", errno, uv__signal_lock_pipefd[0]);
+    return;
+#else
     abort();
+#endif
+  }
 }
 
 
 static void uv__signal_unlock_and_unblock(sigset_t* saved_sigmask) {
-  if (uv__signal_unlock())
+  if (uv__signal_unlock()) {
+#ifdef USE_OHOS_DFX
+    UV_LOGF("errno:%{public}d, sig_lock_pfd[1]:%{public}d", errno, uv__signal_lock_pipefd[1]);
+    return;
+#else
     abort();
+#endif
+  }
 
   if (pthread_sigmask(SIG_SETMASK, saved_sigmask, NULL))
     abort();
@@ -461,8 +480,14 @@ static void uv__signal_event(uv_loop_t* loop,
     }
 
     /* Other errors really should never happen. */
-    if (r == -1)
+    if (r == -1) {
+#ifdef USE_OHOS_DFX
+      UV_LOGF("errno:%{public}d, sig_pfd[0]:%{public}d", errno, loop->signal_pipefd[0]);
+      return;
+#else
       abort();
+#endif
+    }
 
     bytes += r;
 
