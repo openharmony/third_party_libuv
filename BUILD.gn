@@ -1,4 +1,4 @@
-# Copyright (c) 2021 Huawei Device Co., Ltd.
+# Copyright (c) 2021-2024 Huawei Device Co., Ltd.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to
@@ -194,7 +194,7 @@ if (defined(ohos_lite)) {
             [ "-Wno-frame-address" ]  # for use of __builtin_return_address
       }
 
-      if (use_ohos_dfx && is_ohos) {
+      if (use_ohos_dfx && is_ohos && !is_emulator) {
         defines += [ "USE_OHOS_DFX" ]
       }
     } else if (is_mingw || is_win) {
@@ -300,14 +300,19 @@ if (defined(ohos_lite)) {
       }
       if (is_ohos) {
         sources += [ "src/unix/ohos/trace_ohos.c" ]
+        if (is_emulator) {
+          sources += [ "src/unix/ohos/log_ohos.c" ]
+        }
         external_deps += [
           "hilog:libhilog",
           "hitrace:hitrace_meter",
         ]
       }
+
       if (is_ohos && enable_async_stack) {
         sources += [ "src/dfx/async_stack/libuv_async_stack.c" ]
       }
+
       if (is_android) {
         sources += [
           "src/win/log_win.c",

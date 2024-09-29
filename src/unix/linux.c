@@ -671,7 +671,7 @@ int uv__platform_loop_init(uv_loop_t* loop) {
 
   uv__iou_init(loop->backend_fd, &lfields->iou, 64, UV__IORING_SETUP_SQPOLL);
   uv__iou_init(loop->backend_fd, &lfields->ctl, 256, 0);
-  UV_LOGI("loop init: loop add is %{public}zu, backend_fd is %{public}d", (size_t)loop, loop->backend_fd);
+  UV_LOGI("init:%{public}zu, backend_fd:%{public}d", (size_t)loop, loop->backend_fd);
   return 0;
 }
 
@@ -1510,8 +1510,13 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
         continue;
       }
 
+#ifndef USE_OHOS_DFX
       assert(fd >= 0);
       assert((unsigned) fd < loop->nwatchers);
+#else
+      if (fd < 0 || (unsigned) fd >= loop->nwatchers)
+        continue;
+#endif
 
       w = loop->watchers[fd];
 
