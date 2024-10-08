@@ -350,10 +350,9 @@ if (defined(ohos_lite)) {
   }
   ohos_shared_library("uv") {
     deps = [ ":libuv_source" ]
-    if (is_linux || is_ohos) {
-      ldflags = [ "-Wl,--exclude-libs=ALL" ]
+    if (is_ohos) {
+      external_deps = [ "hilog:libhilog" ]
     }
-    external_deps = [ "hilog:libhilog" ]
     public_configs = [ ":libuv_config" ]
     subsystem_name = "thirdparty"
     innerapi_tags = [ "platformsdk" ]
