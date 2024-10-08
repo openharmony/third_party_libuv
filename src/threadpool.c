@@ -678,10 +678,6 @@ void uv__work_done(uv_async_t* handle) {
       uv__queue_append(&lfields->wq_sub[i], &wq);
     }
   }
-
-  if (loop->active_reqs > 1000) {
-    UV_LOGW("there are %{public}u tasks in loop thread", loop->active_reqs);
-  }
 #endif
   uv_mutex_unlock(&loop->wq_mutex);
 
@@ -766,8 +762,8 @@ void uv__ffrt_work(ffrt_executor_task_t* data, ffrt_qos_t qos)
 #ifdef UV_STATISTIC
   uv__post_statistic_work(w, WORK_EXECUTING);
 #endif
-#ifdef ASYNC_STACKTRACE
   uv_work_t* req = container_of(w, uv_work_t, work_req);
+#ifdef ASYNC_STACKTRACE
   LibuvSetStackId((uint64_t)req->reserved[3]);
 #endif
   w->work(w);
@@ -782,8 +778,8 @@ void uv__ffrt_work(ffrt_executor_task_t* data, ffrt_qos_t qos)
       || !lfields->wq_sub[qos].next
       || !lfields->wq_sub[qos].prev) {
     rdunlock_closed_uv_loop_rwlock();
-    UV_LOGE("uv_loop(%{public}zu:%{public}#x), task is invalid",
-            (size_t)loop, loop->magic);
+    UV_LOGE("uv_loop(%{public}zu:%{public}#x) in task(%p:%p) is invalid",
+            (size_t)loop, loop->magic, req->work_cb, req->after_work_cb);
     return;
   }
 
