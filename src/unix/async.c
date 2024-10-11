@@ -39,6 +39,11 @@
 #include <sys/eventfd.h>
 #endif
 
+#ifdef USE_FFRT
+#include "ffrt.h"
+#include "c/executor_task.h"
+#endif
+
 static void uv__async_send(uv_async_t* handle);
 static int uv__async_start(uv_loop_t* loop);
 
@@ -249,6 +254,12 @@ void uv__async_stop(uv_loop_t* loop) {
   }
 
   uv__io_stop(loop, &loop->async_io_watcher, POLLIN);
+#ifdef USE_FFRT
+  if (ffrt_get_cur_task() != NULL) {
+    uv__epoll_ctl(loop->backend_fd, EPOLL_CTL_DEL, loop->async_io_watcher.fd, NULL);
+  }
+#endif
+
 #if defined(__linux__) && defined(USE_OHOS_DFX)
   fdsan_close_with_tag(loop->async_io_watcher.fd, uv__get_addr_tag((void *)&loop->async_io_watcher));
 #else
