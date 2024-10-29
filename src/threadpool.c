@@ -42,6 +42,11 @@
 #define MAX_THREADPOOL_SIZE 1024
 #define UV_TRACE_NAME "UV_TRACE"
 
+#ifdef USE_OHOS_DFX
+#define MIN_REQS_THRESHOLD 50
+#define MAX_REQS_THRESHOLD 500
+#endif
+
 static uv_rwlock_t g_closed_uv_loop_rwlock;
 static uv_once_t once = UV_ONCE_INIT;
 static uv_cond_t cond;
@@ -582,9 +587,23 @@ void uv__work_submit(uv_loop_t* loop,
 #endif
 
 
+static void uv__print_active_reqs(uv_loop_t* loop) {
+#ifdef USE_OHOS_DFX
+  unsigned int count = loop->active_reqs.count;
+  if (count == MIN_REQS_THRESHOLD || count == MIN_REQS_THRESHOLD + 5 ||
+      count == MAX_REQS_THRESHOLD || count == MAX_REQS_THRESHOLD + 5) {
+    UV_LOGW("active reqs:%{public}u", count);
+  }
+#else
+  return;
+#endif
+}
+
+
 #ifdef USE_FFRT
 static void uv__task_done_wrapper(void* work, int status) {
   struct uv__work* w = (struct uv__work*)work;
+  uv__print_active_reqs(w->loop);
   w->done(w, status);
 }
 #endif
@@ -745,6 +764,10 @@ static void uv__queue_done(struct uv__work* w, int err) {
   }
 
   req = container_of(w, uv_work_t, work_req);
+#ifdef USE_OHOS_DFX
+  if (uv_check_data_valid((struct uv_loop_data*)(w->loop->data)) != 0)
+    uv__print_active_reqs(req->loop);
+#endif
   uv__req_unregister(req->loop, req);
 
   if (req->after_work_cb == NULL)
@@ -762,8 +785,8 @@ void uv__ffrt_work(ffrt_executor_task_t* data, ffrt_qos_t qos)
 #ifdef UV_STATISTIC
   uv__post_statistic_work(w, WORK_EXECUTING);
 #endif
-  uv_work_t* req = container_of(w, uv_work_t, work_req);
 #ifdef ASYNC_STACKTRACE
+  uv_work_t* req = container_of(w, uv_work_t, work_req);
   LibuvSetStackId((uint64_t)req->reserved[3]);
 #endif
   w->work(w);
@@ -773,8 +796,8 @@ void uv__ffrt_work(ffrt_executor_task_t* data, ffrt_qos_t qos)
   rdlock_closed_uv_loop_rwlock();
   if (loop->magic != UV_LOOP_MAGIC) {
     rdunlock_closed_uv_loop_rwlock();
-    UV_LOGE("uv_loop(%{public}zu:%{public}#x) in task(%p:%p) is invalid",
-            (size_t)loop, loop->magic, req->work_cb, req->after_work_cb);
+    UV_LOGE("uv_loop(%{public}zu:%{public}#x), task is invalid",
+            (size_t)loop, loop->magic);
     return;
   }
 
@@ -874,6 +897,7 @@ int uv_queue_work(uv_loop_t* loop,
   if (work_cb == NULL)
     return UV_EINVAL;
 
+  uv__print_active_reqs(loop);
   uv__req_init(loop, req, UV_WORK);
   req->loop = loop;
   req->work_cb = work_cb;
@@ -926,6 +950,7 @@ int uv_queue_work_with_qos(uv_loop_t* loop,
     return UV_EINVAL;
   }
 
+  uv__print_active_reqs(loop);
   uv__req_init(loop, req, UV_WORK);
   req->loop = loop;
   req->work_cb = work_cb;
