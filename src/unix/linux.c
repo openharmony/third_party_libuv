@@ -1258,7 +1258,7 @@ static void uv__epoll_ctl_prep(int epollfd,
       return;  /* Ignore errors, may be racing with another thread. */
 
     if (op != EPOLL_CTL_ADD) {
-#ifdef PRINT_ERRNO_ABORT
+#ifdef USE_OHOS_DFX
       UV_ERRNO_ABORT("errno is %d, fd is %d, backend_fd is %d(%s:%s:%d)",
         errno, fd, epollfd, __FILE__, __func__, __LINE__);
 #else
@@ -1267,7 +1267,7 @@ static void uv__epoll_ctl_prep(int epollfd,
     }
 
     if (errno != EEXIST) {
-#ifdef PRINT_ERRNO_ABORT
+#ifdef USE_OHOS_DFX
       UV_ERRNO_ABORT("errno is %d, fd is %d, backend_fd is %d(%s:%s:%d)",
         errno, fd, epollfd, __FILE__, __func__, __LINE__);
 #else
@@ -1280,7 +1280,7 @@ static void uv__epoll_ctl_prep(int epollfd,
     if (!ret)
       return;
 
-#ifdef PRINT_ERRNO_ABORT
+#ifdef USE_OHOS_DFX
     UV_ERRNO_ABORT("errno is %d, uv__epoll_ctl ret is %d, fd is %d, backend_fd is %d(%s:%s:%d)",
       errno, ret, fd, epollfd, __FILE__, __func__, __LINE__);
 #else
