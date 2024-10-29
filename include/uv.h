@@ -188,7 +188,7 @@ struct uv__queue {
   XX(GETNAMEINFO, getnameinfo)                                                \
   XX(RANDOM, random)                                                          \
 
-#ifdef PRINT_ERRNO_ABORT
+#ifdef USE_OHOS_DFX
 #include "info/fatal_message.h"
 #define UV_ERRNO_ABORT(...)                                                   \
   do {                                                                        \
