@@ -43,8 +43,9 @@
 #define UV_TRACE_NAME "UV_TRACE"
 
 #ifdef USE_OHOS_DFX
-#define MIN_REQS_THRESHOLD 50
-#define MAX_REQS_THRESHOLD 500
+#define MIN_REQS_THRESHOLD 100
+#define MAX_REQS_THRESHOLD 300
+#define CURSOR 5
 #endif
 
 static uv_rwlock_t g_closed_uv_loop_rwlock;
@@ -587,12 +588,12 @@ void uv__work_submit(uv_loop_t* loop,
 #endif
 
 
-static void uv__print_active_reqs(uv_loop_t* loop) {
+static void uv__print_active_reqs(uv_loop_t* loop, const char* flag) {
 #ifdef USE_OHOS_DFX
   unsigned int count = loop->active_reqs.count;
-  if (count == MIN_REQS_THRESHOLD || count == MIN_REQS_THRESHOLD + 5 ||
-      count == MAX_REQS_THRESHOLD || count == MAX_REQS_THRESHOLD + 5) {
-    UV_LOGW("active reqs:%{public}u", count);
+  if (count == MIN_REQS_THRESHOLD || count == MIN_REQS_THRESHOLD + CURSOR ||
+      count == MAX_REQS_THRESHOLD || count == MAX_REQS_THRESHOLD + CURSOR) {
+    UV_LOGW("loop:%{public}zu, flag:%{public}s, active reqs:%{public}u", (size_t)loop, flag, count);
   }
 #else
   return;
@@ -603,7 +604,7 @@ static void uv__print_active_reqs(uv_loop_t* loop) {
 #ifdef USE_FFRT
 static void uv__task_done_wrapper(void* work, int status) {
   struct uv__work* w = (struct uv__work*)work;
-  uv__print_active_reqs(w->loop);
+  uv__print_active_reqs(w->loop, "complete");
   w->done(w, status);
 }
 #endif
@@ -678,6 +679,10 @@ void uv__work_done(uv_async_t* handle) {
   int nevents;
 
   loop = container_of(handle, uv_loop_t, wq_async);
+#ifdef USE_OHOS_DFX
+  if (uv_check_data_valid((struct uv_loop_data*)(loop->data)) != 0)
+    uv__print_active_reqs(loop, "complete");
+#endif
   rdlock_closed_uv_loop_rwlock();
   if (!is_uv_loop_good_magic(loop)) {
     rdunlock_closed_uv_loop_rwlock();
@@ -764,10 +769,6 @@ static void uv__queue_done(struct uv__work* w, int err) {
   }
 
   req = container_of(w, uv_work_t, work_req);
-#ifdef USE_OHOS_DFX
-  if (uv_check_data_valid((struct uv_loop_data*)(w->loop->data)) != 0)
-    uv__print_active_reqs(req->loop);
-#endif
   uv__req_unregister(req->loop, req);
 
   if (req->after_work_cb == NULL)
@@ -897,7 +898,7 @@ int uv_queue_work(uv_loop_t* loop,
   if (work_cb == NULL)
     return UV_EINVAL;
 
-  uv__print_active_reqs(loop);
+  uv__print_active_reqs(loop, "execute");
   uv__req_init(loop, req, UV_WORK);
   req->loop = loop;
   req->work_cb = work_cb;
@@ -950,7 +951,7 @@ int uv_queue_work_with_qos(uv_loop_t* loop,
     return UV_EINVAL;
   }
 
-  uv__print_active_reqs(loop);
+  uv__print_active_reqs(loop, "execute");
   uv__req_init(loop, req, UV_WORK);
   req->loop = loop;
   req->work_cb = work_cb;
