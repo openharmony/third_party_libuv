@@ -184,10 +184,6 @@ if (defined(ohos_lite)) {
         defines += [ "ASYNC_STACKTRACE" ]
       }
 
-      if (enable_print_errno_abort && is_ohos) {
-        defines += [ "PRINT_ERRNO_ABORT" ]
-      }
-
       if (enable_uv_statisic && is_ohos) {
         defines += [ "UV_STATISTIC" ]
         cflags +=
