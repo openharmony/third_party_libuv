@@ -21,7 +21,9 @@
 #include "uv.h"
 #include "internal.h"
 #include "uv_log.h"
-
+#ifdef USE_FFRT
+#include "ffrt_inner.h"
+#endif
 #include <assert.h>
 #include <errno.h>
 #include <signal.h>
@@ -341,6 +343,11 @@ void uv__signal_loop_cleanup(uv_loop_t* loop) {
   }
 
   if (loop->signal_pipefd[0] != -1) {
+#ifdef USE_FFRT
+    if (ffrt_get_cur_task() != NULL) {
+      uv__epoll_ctl(loop->backend_fd, EPOLL_CTL_DEL, loop->signal_pipefd[0], NULL);
+    }
+#endif
     uv__close(loop->signal_pipefd[0]);
     loop->signal_pipefd[0] = -1;
   }
