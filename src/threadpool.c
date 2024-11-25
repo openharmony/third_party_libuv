@@ -413,10 +413,6 @@ static void worker(void* arg) {
 #ifdef UV_STATISTIC
     uv__post_statistic_work(w, WORK_EXECUTING);
 #endif
-#ifdef ASYNC_STACKTRACE
-    uv_work_t* req = container_of(w, uv_work_t, work_req);
-    LibuvSetStackId((uint64_t)req->reserved[3]);
-#endif
     w->work(w);
 #ifdef UV_STATISTIC
     uv__post_statistic_work(w, WORK_END);
@@ -723,10 +719,6 @@ void uv__work_done(uv_async_t* handle) {
     dump_work->info = w->info;
     dump_work->work = uv__update_work_info;
 #endif
-#ifdef ASYNC_STACKTRACE
-    uv_work_t* req = container_of(w, uv_work_t, work_req);
-    LibuvSetStackId((uint64_t)req->reserved[3]);
-#endif
     w->done(w, err);
     nevents++;
 #ifdef UV_STATISTIC
@@ -755,7 +747,9 @@ void uv__work_done(uv_async_t* handle) {
 
 static void uv__queue_work(struct uv__work* w) {
   uv_work_t* req = container_of(w, uv_work_t, work_req);
-
+#ifdef ASYNC_STACKTRACE
+  LibuvSetStackId((uint64_t)req->reserved[3]);
+#endif
   req->work_cb(req);
 }
 
@@ -769,6 +763,9 @@ static void uv__queue_done(struct uv__work* w, int err) {
   }
 
   req = container_of(w, uv_work_t, work_req);
+#ifdef ASYNC_STACKTRACE
+  LibuvSetStackId((uint64_t)req->reserved[3]);
+#endif
   uv__req_unregister(req->loop, req);
 
   if (req->after_work_cb == NULL)
@@ -785,10 +782,6 @@ void uv__ffrt_work(ffrt_executor_task_t* data, ffrt_qos_t qos)
   uv_loop_t* loop = w->loop;
 #ifdef UV_STATISTIC
   uv__post_statistic_work(w, WORK_EXECUTING);
-#endif
-#ifdef ASYNC_STACKTRACE
-  uv_work_t* req = container_of(w, uv_work_t, work_req);
-  LibuvSetStackId((uint64_t)req->reserved[3]);
 #endif
   w->work(w);
 #ifdef UV_STATISTIC
