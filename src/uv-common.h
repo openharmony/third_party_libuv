@@ -449,6 +449,7 @@ struct uv__loop_internal_fields_s {
 #endif  /* __linux__ */
 #ifdef USE_FFRT
   struct uv__queue wq_sub[4];
+  unsigned int trigger;
 #endif
 };
 

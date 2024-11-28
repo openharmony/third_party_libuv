@@ -507,7 +507,14 @@ static void uv__signal_event(uv_loop_t* loop,
 
       if (msg->signum == handle->signum) {
         assert(!(handle->flags & UV_HANDLE_CLOSING));
+#ifdef USE_FFRT
+        uv__loop_internal_fields_t* lfields = uv__get_internal_fields(handle->loop);
+        if (lfields->trigger != 1) {
+          handle->signal_cb(handle, handle->signum);
+        }
+#else
         handle->signal_cb(handle, handle->signum);
+#endif
       }
 
       handle->dispatched_signals++;
