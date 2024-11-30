@@ -538,6 +538,7 @@ void uv_walk(uv_loop_t* loop, uv_walk_cb walk_cb, void* arg) {
   struct uv__queue* q;
   uv_handle_t* h;
 
+  UV_LOGI("clean up handles in loop(%{public}zu)", (size_t)loop);
   uv__queue_move(&loop->handle_queue, &queue);
   while (!uv__queue_empty(&queue)) {
     q = uv__queue_head(&queue);

@@ -126,7 +126,7 @@ static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
     if (errno == EINTR)
       continue;
 
-#ifdef PRINT_ERRNO_ABORT
+#ifdef USE_OHOS_DFX
     UV_ERRNO_ABORT("errno is %d, loop addr is %zu, fd is %d (%s:%s:%d)",
       errno, (size_t)loop, w->fd, __FILE__, __func__, __LINE__);
 #else
@@ -191,7 +191,7 @@ static void uv__async_send(uv_async_t* handle) {
     if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)
       return;
 
-#ifdef PRINT_ERRNO_ABORT
+#ifdef USE_OHOS_DFX
     UV_ERRNO_ABORT("errno is %d, loop addr is %zu, fd is %d (%s:%s:%d)",
       errno, (size_t)loop, fd, __FILE__, __func__, __LINE__);
 #else
