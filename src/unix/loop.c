@@ -28,33 +28,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#ifdef USE_FFRT
-#include <sys/types.h>
-#include <sys/syscall.h>
-
-static void uv__get_process_name(char* processName, int bufferLength) {
-  int fd = open("/proc/self/cmdline", O_RDONLY);
-  if (fd != -1) {
-    ssize_t ret = syscall(SYS_read, fd, processName, bufferLength - 1);
-    if (ret != -1) {
-      processName[ret] = '\0';
-    }
-    syscall(SYS_close, fd);
-  }
-}
-
-static void uv__set_signal_flag(uv__loop_internal_fields_t* lfields) {
-  char processName[1024] = {0};
-  uv__get_process_name(processName, sizeof(processName));
-  char* c = strstr(processName, "com.atomicservice.");
-  if (c == NULL || c > processName) {
-    lfields->trigger = 0;
-    return;
-  }
-  lfields->trigger = 1;
-}
-#endif
-
 int uv_loop_init(uv_loop_t* loop) {
   uv__loop_internal_fields_t* lfields;
   void* saved_data;
@@ -69,9 +42,6 @@ int uv_loop_init(uv_loop_t* loop) {
   if (lfields == NULL)
     return UV_ENOMEM;
   loop->internal_fields = lfields;
-#ifdef USE_FFRT
-  uv__set_signal_flag(lfields);
-#endif
   err = uv_mutex_init(&lfields->loop_metrics.lock);
   if (err)
     goto fail_metrics_mutex_init;
