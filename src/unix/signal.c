@@ -23,6 +23,8 @@
 #include "uv_log.h"
 #ifdef USE_FFRT
 #include "ffrt_inner.h"
+#include <sys/types.h>
+#include <sys/syscall.h>
 #endif
 #include <assert.h>
 #include <errno.h>
@@ -456,6 +458,36 @@ static int uv__signal_start(uv_signal_t* handle,
 }
 
 
+#ifdef USE_FFRT
+static void uv__get_process_name(char* processName, int bufferLength) {
+  int fd = open("/proc/self/cmdline", O_RDONLY);
+  if (fd != -1) {
+    ssize_t ret = syscall(SYS_read, fd, processName, bufferLength - 1);
+    if (ret != -1) {
+      processName[ret] = '\0';
+    }
+    syscall(SYS_close, fd);
+  }
+}
+
+
+static void uv__set_signal_flag(uv__loop_internal_fields_t* lfields) {
+  static int trigger = -1;
+  if (trigger == -1) {
+    char processName[1024] = {0};
+    uv__get_process_name(processName, sizeof(processName));
+    char* c = strstr(processName, "com.atomicservice.");
+    if (c == NULL || c > processName) {
+      trigger = 0;
+    } else {
+      trigger = 1;
+    }
+  }
+  lfields->trigger = (unsigned int)trigger;
+}
+#endif
+
+
 static void uv__signal_event(uv_loop_t* loop,
                              uv__io_t* w,
                              unsigned int events) {
@@ -467,7 +499,9 @@ static void uv__signal_event(uv_loop_t* loop,
 
   bytes = 0;
   end = 0;
-
+#ifdef USE_FFRT
+  uv__set_signal_flag(loop->internal_fields);
+#endif
   do {
     r = read(loop->signal_pipefd[0], buf + bytes, sizeof(buf) - bytes);
 
