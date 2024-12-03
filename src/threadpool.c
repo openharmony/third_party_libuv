@@ -693,7 +693,7 @@ void uv__work_done(uv_async_t* handle) {
   uv__loop_internal_fields_t* lfields = uv__get_internal_fields(loop);
   int i;
   uv__queue_init(&wq);
-  for (i = 3; i >= 0; i--) {
+  for (i = 4; i >= 0; i--) {
     if (!uv__queue_empty(&lfields->wq_sub[i])) {
       uv__queue_append(&lfields->wq_sub[i], &wq);
     }
@@ -940,7 +940,8 @@ int uv_queue_work_with_qos(uv_loop_t* loop,
   STATIC_ASSERT(uv_qos_utility == ffrt_qos_utility);
   STATIC_ASSERT(uv_qos_default == ffrt_qos_default);
   STATIC_ASSERT(uv_qos_user_initiated == ffrt_qos_user_initiated);
-  if (qos < ffrt_qos_background || qos > ffrt_qos_user_initiated) {
+  STATIC_ASSERT(uv_qos_user_interactive == ffrt_qos_deadline_request);
+  if (qos < ffrt_qos_background || qos > ffrt_qos_deadline_request) {
     return UV_EINVAL;
   }
 
