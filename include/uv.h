@@ -1187,6 +1187,7 @@ typedef enum {
   uv_qos_utility = 1,
   uv_qos_default = 2,
   uv_qos_user_initiated = 3,
+  uv_qos_user_interactive = 4,
 } uv_qos_t;
 
 UV_EXTERN int uv_queue_work_with_qos(uv_loop_t* loop,
