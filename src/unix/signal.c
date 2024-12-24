@@ -470,7 +470,7 @@ static void uv__get_process_name(char* processName, int bufferLength) {
   }
 }
 
-static int uv__set_signal_flag() {
+static int uv__get_signal_flag() {
   static int trigger = -1;
 
   if (trigger == -1) {
@@ -500,7 +500,7 @@ static void uv__signal_event(uv_loop_t* loop,
   bytes = 0;
   end = 0;
 #ifdef USE_FFRT
-  unsigned int trigger = uv__set_signal_flag();
+  unsigned int trigger = uv__get_signal_flag();
 #endif
   do {
     r = read(loop->signal_pipefd[0], buf + bytes, sizeof(buf) - bytes);
