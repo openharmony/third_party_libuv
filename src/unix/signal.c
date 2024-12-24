@@ -470,9 +470,9 @@ static void uv__get_process_name(char* processName, int bufferLength) {
   }
 }
 
-
-static void uv__set_signal_flag(uv__loop_internal_fields_t* lfields) {
+static int uv__set_signal_flag() {
   static int trigger = -1;
+
   if (trigger == -1) {
     char processName[1024] = {0};
     uv__get_process_name(processName, sizeof(processName));
@@ -483,7 +483,7 @@ static void uv__set_signal_flag(uv__loop_internal_fields_t* lfields) {
       trigger = 1;
     }
   }
-  lfields->trigger = (unsigned int)trigger;
+  return trigger;
 }
 #endif
 
@@ -500,7 +500,7 @@ static void uv__signal_event(uv_loop_t* loop,
   bytes = 0;
   end = 0;
 #ifdef USE_FFRT
-  uv__set_signal_flag(loop->internal_fields);
+  unsigned int trigger = uv__set_signal_flag();
 #endif
   do {
     r = read(loop->signal_pipefd[0], buf + bytes, sizeof(buf) - bytes);
@@ -542,8 +542,7 @@ static void uv__signal_event(uv_loop_t* loop,
       if (msg->signum == handle->signum) {
         assert(!(handle->flags & UV_HANDLE_CLOSING));
 #ifdef USE_FFRT
-        uv__loop_internal_fields_t* lfields = uv__get_internal_fields(handle->loop);
-        if (lfields->trigger != 1) {
+        if (trigger != 1) {
           handle->signal_cb(handle, handle->signum);
         }
 #else
