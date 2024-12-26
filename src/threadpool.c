@@ -74,7 +74,7 @@ static QUEUE statistic_works;
 static uv_cond_t dump_cond;
 static uv_thread_t dump_thread;
 
-static void uv_dump_worker(void*  arg) {
+static void uv_dump_worker(void* arg) {
   struct uv__statistic_work* w;
   struct uv__queue* q;
   uv_sem_post((uv_sem_t*) arg);
@@ -797,7 +797,7 @@ void uv__ffrt_work(ffrt_executor_task_t* data, ffrt_qos_t qos)
   rdlock_closed_uv_loop_rwlock();
   if (loop->magic != UV_LOOP_MAGIC) {
     rdunlock_closed_uv_loop_rwlock();
-    UV_LOGE("uv_loop(%{public}zu:%{public}#x) is invalid",
+    UV_LOGE("uv_loop(%{public}zu:%{public}#x), task is invalid",
             (size_t)loop, loop->magic);
     return;
   }
