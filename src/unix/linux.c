@@ -1546,6 +1546,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
          * Ignore all errors because we may be racing with another thread
          * when the file descriptor is closed.
          */
+        UV_LOGF("fd %{public}d don't belong to loop %{public}zu", fd, (size_t)loop);
         uv__epoll_ctl_prep(epollfd, ctl, &prep, EPOLL_CTL_DEL, fd, pe);
         continue;
       }
