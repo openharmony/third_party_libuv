@@ -1001,7 +1001,9 @@ int uv_os_tmpdir(char* buffer, size_t* size) {
     path[len] = L'\0';
   }
 
-  return uv__copy_utf16_to_utf8(path, len, buffer, size);
+  int rc = uv__copy_utf16_to_utf8(path, len, buffer, size);
+  uv__free(path);
+  return rc;
 }
 
 
