@@ -121,6 +121,7 @@ if (defined(ohos_lite)) {
     ]
   }
 } else {
+  import("//build/config/components/init/param/param_fixer.gni")
   import("//build/ohos.gni")
   import("//third_party/libuv/libuv.gni")
 
@@ -302,6 +303,7 @@ if (defined(ohos_lite)) {
         external_deps += [
           "hilog:libhilog",
           "hitrace:hitrace_meter",
+          "init:libbegetutil",
         ]
       }
 
@@ -338,14 +340,36 @@ if (defined(ohos_lite)) {
     part_name = "libuv"
   }
 
+  ohos_prebuilt_para("libuv.para") {
+    source = "libuv.para"
+    part_name = "libuv"
+    subsystem_name = "thirdparty"
+    module_install_dir = "etc/param"
+  }
+
+  ohos_prebuilt_para("libuv.para.dac") {
+    source = "libuv.para.dac"
+    part_name = "libuv"
+    subsystem_name = "thirdparty"
+    module_install_dir = "etc/param"
+  }
+
   ohos_static_library("uv_static") {
-    deps = [ ":libuv_source" ]
+    deps = [
+      ":libuv.para",
+      ":libuv.para.dac",
+      ":libuv_source",
+    ]
     public_configs = [ ":libuv_config" ]
     subsystem_name = "thirdparty"
     part_name = "libuv"
   }
   ohos_shared_library("uv") {
-    deps = [ ":libuv_source" ]
+    deps = [
+      ":libuv.para",
+      ":libuv.para.dac",
+      ":libuv_source",
+    ]
     public_configs = [ ":libuv_config" ]
     subsystem_name = "thirdparty"
     innerapi_tags = [ "platformsdk" ]

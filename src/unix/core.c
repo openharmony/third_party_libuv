@@ -147,7 +147,9 @@ uint64_t uv_hrtime(void) {
 
 void uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
   assert(!uv__is_closing(handle));
-
+#if defined(USE_OHOS_DFX) && defined(__aarch64__)
+  uv__multi_thread_check_unify(handle->loop, __func__);
+#endif
   handle->flags |= UV_HANDLE_CLOSING;
   handle->close_cb = close_cb;
 
@@ -428,6 +430,9 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
   int timeout;
   int r;
   int can_sleep;
+#if defined(USE_OHOS_DFX) && defined(__aarch64__)
+  uv__set_thread_id(loop);
+#endif
 
   if (!is_uv_loop_good_magic(loop)) {
     return 0;
