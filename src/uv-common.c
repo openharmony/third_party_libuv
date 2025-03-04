@@ -39,7 +39,7 @@
 #endif
 
 #if defined(USE_OHOS_DFX) && defined(__aarch64__)
-#include "paramater.h"
+#include "parameter.h"
 #include <unistd.h>
 #include <sys/types.h>
 static unsigned int g_multi_thread_check = 0;
