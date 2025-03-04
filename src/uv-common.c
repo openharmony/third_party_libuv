@@ -38,6 +38,16 @@
 # include <sys/un.h> /* AF_UNIX, sockaddr_un */
 #endif
 
+#if defined(USE_OHOS_DFX) && defined(__aarch64__)
+#include "paramater.h"
+#include <unistd.h>
+#include <sys/types.h>
+static unsigned int g_multi_thread_check = 0;
+#endif
+
+#ifdef USE_FFRT
+#include "ffrt_inner.h"
+#endif
 
 typedef struct {
   uv_malloc_func local_malloc;
@@ -1054,3 +1064,72 @@ uint64_t uv__get_addr_tag(void* addr) {
 #endif
   return tag;
 }
+
+
+#if defined(USE_OHOS_DFX) && defined(__aarch64__)
+static uv_once_t thread_check_guard = UV_ONCE_INIT;
+void init_param_once() {
+  unsigned int param_value = GetIntParameter("persist.libuv.properties", -1);
+  if (param_value == 1) {
+    g_multi_thread_check = 1;
+  }
+}
+
+
+int uv__is_multi_thread_open(void) {
+  uv_once(&thread_check_guard, init_param_once);
+  if (g_multi_thread_check == 0) {
+    return 0;
+  }
+#ifdef USE_FFRT
+  if (ffrt_get_cur_task() != NULL) {
+    return 0;
+  }
+#endif
+  return 1;
+}
+
+
+void uv__init_thread_id(uv_loop_t* loop) {
+  if (uv__is_multi_thread_open()) {
+    uv__loop_internal_fields_t* lfields_tid = uv__get_internal_fields(loop);
+    lfields_tid->thread_id = 0;
+    lfields_tid->thread_id |= MULTI_THREAD_CHECK_LOOP_INIT;
+  }
+}
+
+
+void uv__set_thread_id(uv_loop_t* loop) {
+  if (uv__is_multi_thread_open()) {
+    uv__loop_internal_fields_t* lfields_tid = uv__get_internal_fields(loop);
+    lfields_tid->thread_id |= (unsigned int)gettid();
+  }
+}
+
+
+static unsigned int uv__get_thread_id(const uv_loop_t* loop) {
+  if (uv__is_multi_thread_open()) {
+    uv__loop_internal_fields_t* lfields_tid = uv__get_internal_fields(loop);
+    unsigned int thread_id = lfields_tid->thread_id & ~MULTI_THREAD_CHECK_LOOP_INIT;
+    return thread_id;
+  } else {
+    return 0;
+  }
+}
+
+
+void uv__multi_thread_check_unify(const uv_loop_t* loop, const char* funcName) {
+  if (!uv__is_multi_thread_open()) {
+    return;
+  }
+
+  unsigned int thread_id = uv__get_thread_id(loop);
+  if (thread_id == 0) {
+    return;
+  }
+  if (thread_id != (unsigned int)gettid()) {
+    UV_LOGF("multi-thread occurred in function %{public}s!", funcName);
+    abort();
+  }
+}
+#endif

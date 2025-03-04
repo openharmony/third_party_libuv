@@ -41,6 +41,9 @@
 # include <stdatomic.h>
 #endif
 
+#if defined(USE_OHOS_DFX) && defined(__aarch64__)
+#define MULTI_THREAD_CHECK_LOOP_INIT 0x80000000
+#endif
 #if EDOM > 0
 # define UV__ERR(x) (-(x))
 #else
@@ -450,8 +453,17 @@ struct uv__loop_internal_fields_s {
 #ifdef USE_FFRT
   struct uv__queue wq_sub[5];
 #endif
+#if defined(USE_OHOS_DFX) && defined(__aarch64__)
+  unsigned int thread_id;
+#endif
 };
 
 uint64_t uv__get_addr_tag(void* addr);
 
+#if defined(USE_OHOS_DFX) && defined(__aarch64__)
+int uv__is_multi_thread_open(void);
+void uv__init_thread_id(uv_loop_t* loop);
+void uv__set_thread_id(uv_looop_t* loop);
+void uv__multi_thread_check_unify(const uv_loop_t* loop, const char* funcName);
+#endif
 #endif /* UV_COMMON_H_ */
