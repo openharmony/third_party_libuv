@@ -67,6 +67,9 @@ int uv_loop_init(uv_loop_t* loop) {
   uv__queue_init(&loop->handle_queue);
 
   loop->active_handles = 0;
+#if defined(USE_OHOS_DFX) && defined(__aarch64__)
+  uv__init_thread_id(loop);
+#endif
   loop->active_reqs.count = 0;
   loop->nfds = 0;
   loop->watchers = NULL;
