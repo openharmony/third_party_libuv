@@ -463,7 +463,7 @@ uint64_t uv__get_addr_tag(void* addr);
 #if defined(USE_OHOS_DFX) && defined(__aarch64__)
 int uv__is_multi_thread_open(void);
 void uv__init_thread_id(uv_loop_t* loop);
-void uv__set_thread_id(uv_looop_t* loop);
+void uv__set_thread_id(uv_loop_t* loop);
 void uv__multi_thread_check_unify(const uv_loop_t* loop, const char* funcName);
 #endif
 #endif /* UV_COMMON_H_ */
