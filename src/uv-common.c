@@ -1133,3 +1133,25 @@ void uv__multi_thread_check_unify(const uv_loop_t* loop, const char* funcName) {
   }
 }
 #endif
+
+#ifdef USE_FFRT
+int uv__copy_taskname(uv_req_t* req, const char* task_name) {
+  char* str = (char*)malloc(TASK_NAME_LENGTH);
+  if (str == NULL) {
+    UV_LOGE("malloc task name failed, task name:%{public}s", task_name);
+    return UV_EINVAL;
+  }
+
+  char* pos_first = strchr(task_name, SPLIT_CHAR_FIRST);
+  char* pos_end = strchr(task_name, SPLIT_CHAR_SECOND);
+  pos_first = (pos_first == NULL ? (char*)task_name : pos_first + 1);
+  snprintf(str, TASK_NAME_LENGTH, "%s", pos_first);
+  int end = TASK_NAME_LENGTH - 1;
+  if (pos_end > pos_first && (pos_end - pos_first) < TASK_NAME_LENGTH - 1) {
+    end = pos_end - pos_first;
+  }
+  str[end] = '\0';
+  req->reserved[1] = (void*)str;
+  return 0;
+}
+#endif

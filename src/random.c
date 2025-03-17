@@ -70,11 +70,18 @@ static int uv__random(void* buf, size_t buflen) {
 }
 
 
+#ifdef USE_FFRT
+static void uv__random_work(struct uv__work* w, int qos) {
+#else
 static void uv__random_work(struct uv__work* w) {
+#endif
   uv_random_t* req;
 
   req = container_of(w, uv_random_t, work_req);
   req->status = uv__random(req->buf, req->buflen);
+#ifdef USE_FFRT
+  uv__work_submit_to_eventloop((uv_req_t*)req, w, qos);
+#endif
 }
 
 

@@ -215,7 +215,11 @@ void uv__work_submit(uv_loop_t* loop,
 #endif
                      struct uv__work *w,
                      enum uv__work_kind kind,
+#ifdef USE_FFRT
+                     void (*work)(struct uv__work *w, int qos),
+#else
                      void (*work)(struct uv__work *w),
+#endif
                      void (*done)(struct uv__work *w, int status));
 
 void uv__work_done(uv_async_t* handle);
@@ -465,5 +469,13 @@ int uv__is_multi_thread_open(void);
 void uv__init_thread_id(uv_loop_t* loop);
 void uv__set_thread_id(uv_loop_t* loop);
 void uv__multi_thread_check_unify(const uv_loop_t* loop, const char* funcName);
+#endif
+
+#ifdef USE_FFRT
+#define SPLIT_CHAR_FIRST ':'
+#define SPLIT_CHAR_SECOND '#'
+#define TASK_NAME_LENGTH 64
+void uv__work_submit_to_eventloop(uv_req_t* req, struct uv__work* w, int qos);
+int uv__copy_taskname(uv_req_t* req, const char* task_name);
 #endif
 #endif /* UV_COMMON_H_ */
