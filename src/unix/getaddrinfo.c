@@ -95,13 +95,22 @@ int uv__getaddrinfo_translate_error(int sys_err) {
 }
 
 
+#ifdef USE_FFRT
+static void uv__getaddrinfo_work(struct uv__work* w, int qos) {
+#else
 static void uv__getaddrinfo_work(struct uv__work* w) {
+#endif
   uv_getaddrinfo_t* req;
   int err;
 
   req = container_of(w, uv_getaddrinfo_t, work_req);
   err = getaddrinfo(req->hostname, req->service, req->hints, &req->addrinfo);
   req->retcode = uv__getaddrinfo_translate_error(err);
+#ifdef USE_FFRT
+  if (qos != -1) {
+    uv__work_submit_to_eventloop((uv_req_t*)req, w, qos);
+  }
+#endif
 }
 
 
@@ -213,7 +222,11 @@ int uv_getaddrinfo(uv_loop_t* loop,
                     uv__getaddrinfo_done);
     return 0;
   } else {
+#ifdef USE_FFRT
+    uv__getaddrinfo_work(&req->work_req, -1);
+#else
     uv__getaddrinfo_work(&req->work_req);
+#endif
     uv__getaddrinfo_done(&req->work_req, 0);
     return req->retcode;
   }

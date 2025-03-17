@@ -160,7 +160,7 @@ extern char *mkdtemp(char *template); /* See issue #740 on AIX < 7 */
       return 0;                                                               \
     }                                                                         \
     else {                                                                    \
-      uv__fs_work(&req->work_req);                                            \
+      uv__fs_work(&req->work_req, -1);                                        \
       return req->result;                                                     \
     }                                                                         \
   }                                                                           \
@@ -1564,7 +1564,11 @@ static ssize_t uv__fs_write_all(uv_fs_t* req) {
 }
 
 
+#ifdef USE_FFRT
+static void uv__fs_work(struct uv__work* w, int qos) {
+#else
 static void uv__fs_work(struct uv__work* w) {
+#endif
   int retry_on_eintr;
   uv_fs_t* req;
   ssize_t r;
@@ -1633,6 +1637,11 @@ static void uv__fs_work(struct uv__work* w) {
                  req->fs_type == UV_FS_LSTAT)) {
     req->ptr = &req->statbuf;
   }
+#ifdef USE_FFRT
+  if (qos != -1) {
+    uv__work_submit_to_eventloop((uv_req_t*)req, w, qos);
+  }
+#endif
 }
 
 
