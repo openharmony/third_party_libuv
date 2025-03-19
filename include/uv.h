@@ -1180,6 +1180,13 @@ UV_EXTERN int uv_queue_work(uv_loop_t* loop,
                             uv_work_cb work_cb,
                             uv_after_work_cb after_work_cb);
 
+/* This function is used for OpenHarmony only. */
+UV_EXTERN int uv_queue_work_internal(uv_loop_t* loop,
+                                     uv_work_t* req,
+                                     uv_work_cb work_cb,
+                                     uv_after_work_cb after_work_cb,
+                                     const char* task_name);
+
 UV_EXTERN int uv_cancel(uv_req_t* req);
 
 typedef enum {
@@ -1195,6 +1202,14 @@ UV_EXTERN int uv_queue_work_with_qos(uv_loop_t* loop,
                                      uv_work_cb work_cb,
                                      uv_after_work_cb after_work_cb,
                                      uv_qos_t qos);
+
+/* This function is used for OpenHarmony only. */
+UV_EXTERN int uv_queue_work_with_qos_internal(uv_loop_t* loop,
+                                              uv_work_t* req,
+                                              uv_work_cb work_cb,
+                                              uv_after_work_cb after_work_cb,
+                                              uv_qos_t qos,
+                                              const char* task_name);
 
 struct uv_cpu_times_s {
   uint64_t user; /* milliseconds */
@@ -1926,7 +1941,7 @@ union uv_any_req {
 #undef XX
 
 typedef void (*uv_io_cb)(void* work, int status);
-typedef void (*uv_post_task)(void* handler, uv_io_cb func, void* work, int status, int prio);
+typedef void (*uv_post_task)(const char* task_name, uv_io_cb func, void* work, int status, int prio);
 
 struct uv_loop_data {
   void* event_handler;

@@ -28,7 +28,11 @@
 #include "internal.h"
 
 
+#ifdef USE_FFRT
+static void uv__getnameinfo_work(struct uv__work* w, int qos) {
+#else
 static void uv__getnameinfo_work(struct uv__work* w) {
+#endif
   uv_getnameinfo_t* req;
   int err;
   socklen_t salen;
@@ -50,6 +54,11 @@ static void uv__getnameinfo_work(struct uv__work* w) {
                     sizeof(req->service),
                     req->flags);
   req->retcode = uv__getaddrinfo_translate_error(err);
+#ifdef USE_FFRT
+  if (qos != -1) {
+    uv__work_submit_to_eventloop((uv_req_t*)req, w, qos);
+  }
+#endif
 }
 
 static void uv__getnameinfo_done(struct uv__work* w, int status) {
@@ -117,7 +126,11 @@ int uv_getnameinfo(uv_loop_t* loop,
                     uv__getnameinfo_done);
     return 0;
   } else {
+#ifdef USE_FFRT
+    uv__getnameinfo_work(&req->work_req, -1);
+#else
     uv__getnameinfo_work(&req->work_req);
+#endif
     uv__getnameinfo_done(&req->work_req, 0);
     return req->retcode;
   }
