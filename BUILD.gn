@@ -186,7 +186,6 @@ if (defined(ohos_lite)) {
       }
 
       if (enable_uv_statisic && is_ohos) {
-        defines += [ "UV_STATISTIC" ]
         cflags +=
             [ "-Wno-frame-address" ]  # for use of __builtin_return_address
       }
