@@ -31,7 +31,6 @@
 
 #include <stdlib.h>
 #ifdef USE_FFRT
-#define REQ_MASK 0x1111
 #include <assert.h>
 #include "ffrt_inner.h"
 #endif
@@ -652,9 +651,7 @@ int uv_queue_work(uv_loop_t* loop,
   if (work_cb == NULL)
     return UV_EINVAL;
 #ifdef USE_FFRT
-  if (req->type != REQ_MASK) {
-    req->reserved[1] = NULL;
-  }
+  req->reserved[1] = NULL;
 #endif
   uv__print_active_reqs(loop, "execute");
   uv__req_init(loop, req, UV_WORK);
@@ -684,10 +681,33 @@ int uv_queue_work_internal(uv_loop_t* loop,
                            uv_after_work_cb after_work_cb,
                            const char* task_name) {
 #ifdef USE_FFRT
-  uv__copy_taskname(req, task_name);
-  req->type = (uv_req_type)REQ_MASK;
+  if (work_cb == NULL)
+    return UV_EINVAL;
+
+  int ret = uv__copy_taskname((uv_req_t*)req, task_name);
+  if (ret != 0) {
+    req->reserved[1] = NULL;
+  }
+
+  uv__print_active_reqs(loop, "execute");
+  uv__req_init(loop, req, UV_WORK);
+  req->loop = loop;
+  req->work_cb = work_cb;
+  req->after_work_cb = after_work_cb;
+
+#ifdef ASYNC_STACKTRACE
+  req->reserved[3] = (void*)LibuvCollectAsyncStack();
 #endif
+  uv__work_submit(loop,
+                  (uv_req_t*)req,
+                  &req->work_req,
+                  UV__WORK_CPU,
+                  uv__queue_work,
+                  uv__queue_done);
+  return 0;
+#else
   return uv_queue_work(loop, req, work_cb, after_work_cb);
+#endif
 }
 
 
@@ -699,10 +719,8 @@ int uv_queue_work_with_qos(uv_loop_t* loop,
 #ifdef USE_FFRT
   if (work_cb == NULL)
     return UV_EINVAL;
-  if (req->type != REQ_MASK) {
-    req->reserved[1] = NULL;
-  }
 
+  req->reserved[1] = NULL;
   STATIC_ASSERT(uv_qos_background == ffrt_qos_background);
   STATIC_ASSERT(uv_qos_utility == ffrt_qos_utility);
   STATIC_ASSERT(uv_qos_default == ffrt_qos_default);
@@ -737,10 +755,38 @@ int uv_queue_work_with_qos_internal(uv_loop_t* loop,
                            uv_qos_t qos,
                            const char* task_name) {
 #ifdef USE_FFRT
-  uv__copy_taskname(req, task_name);
-  req->type = (uv_req_type)REQ_MASK;
-#endif
+  if (work_cb == NULL)
+    return UV_EINVAL;
+
+  int ret = uv__copy_taskname((uv_req_t*)req, task_name);
+  if (ret != 0) {
+    req->reserved[1] = NULL;
+  }
+
+  STATIC_ASSERT(uv_qos_background == ffrt_qos_background);
+  STATIC_ASSERT(uv_qos_utility == ffrt_qos_utility);
+  STATIC_ASSERT(uv_qos_default == ffrt_qos_default);
+  STATIC_ASSERT(uv_qos_user_initiated == ffrt_qos_user_initiated);
+  STATIC_ASSERT(uv_qos_user_interactive == ffrt_qos_deadline_request);
+  if (qos < ffrt_qos_background || qos > ffrt_qos_deadline_request) {
+    return UV_EINVAL;
+  }
+
+  uv__print_active_reqs(loop, "execute");
+  uv__req_init(loop, req, UV_WORK);
+  req->loop = loop;
+  req->work_cb = work_cb;
+  req->after_work_cb = after_work_cb;
+  uv__work_submit_with_qos(loop,
+                  (uv_req_t*)req,
+                  &req->work_req,
+                  (ffrt_qos_t)qos,
+                  uv__queue_work,
+                  uv__queue_done);
+  return 0;
+#else
   return uv_queue_work_with_qos(loop, req, work_cb, after_work_cb, qos);
+#endif
 }
 
 
