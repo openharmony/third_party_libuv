@@ -660,6 +660,7 @@ int uv_queue_work(uv_loop_t* loop,
   req->after_work_cb = after_work_cb;
 
 #ifdef ASYNC_STACKTRACE
+  /* The req->reserved[3] is used for DFX only. */
   req->reserved[3] = (void*)LibuvCollectAsyncStack();
 #endif
   uv__work_submit(loop,
@@ -696,6 +697,7 @@ int uv_queue_work_internal(uv_loop_t* loop,
   req->after_work_cb = after_work_cb;
 
 #ifdef ASYNC_STACKTRACE
+  /* The req->reserved[3] is used for DFX only. */
   req->reserved[3] = (void*)LibuvCollectAsyncStack();
 #endif
   uv__work_submit(loop,
@@ -735,6 +737,11 @@ int uv_queue_work_with_qos(uv_loop_t* loop,
   req->loop = loop;
   req->work_cb = work_cb;
   req->after_work_cb = after_work_cb;
+
+#ifdef ASYNC_STACKTRACE
+  /* The req->reserved[3] is used for DFX only. */
+  req->reserved[3] = (void*)LibuvCollectAsyncStack();
+#endif
   uv__work_submit_with_qos(loop,
                   (uv_req_t*)req,
                   &req->work_req,
@@ -777,6 +784,11 @@ int uv_queue_work_with_qos_internal(uv_loop_t* loop,
   req->loop = loop;
   req->work_cb = work_cb;
   req->after_work_cb = after_work_cb;
+
+#ifdef ASYNC_STACKTRACE
+  /* The req->reserved[3] is used for DFX only. */
+  req->reserved[3] = (void*)LibuvCollectAsyncStack();
+#endif
   uv__work_submit_with_qos(loop,
                   (uv_req_t*)req,
                   &req->work_req,
