@@ -41,9 +41,6 @@
 # include <stdatomic.h>
 #endif
 
-#if defined(USE_OHOS_DFX) && defined(__aarch64__)
-#define MULTI_THREAD_CHECK_LOOP_INIT 0x80000000
-#endif
 #if EDOM > 0
 # define UV__ERR(x) (-(x))
 #else

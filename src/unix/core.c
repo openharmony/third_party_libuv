@@ -423,9 +423,9 @@ int uv_loop_alive_taskpool(const uv_loop_t* loop, int initial_handles) {
 }
 
 
+#ifdef USE_FFRT
 int is_uv_loop_good_magic(const uv_loop_t* loop);
-
-
+#endif
 int uv_run(uv_loop_t* loop, uv_run_mode mode) {
   int timeout;
   int r;
@@ -434,18 +434,22 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
   uv__set_thread_id(loop);
 #endif
 
+#ifdef USE_FFRT
   if (!is_uv_loop_good_magic(loop)) {
     return 0;
   }
+#endif
 
   r = uv__loop_alive(loop);
   if (!r)
     uv__update_time(loop);
 
   while (r != 0 && loop->stop_flag == 0) {
+#ifdef USE_FFRT
     if (!is_uv_loop_good_magic(loop)) {
       return 0;
     }
+#endif
 
     uv__update_time(loop);
     uv__run_timers(loop);
