@@ -114,7 +114,9 @@ int uv_loop_init(uv_loop_t* loop) {
   uv__handle_unref(&loop->wq_async);
   loop->wq_async.flags |= UV_HANDLE_INTERNAL;
 
+#ifdef USE_FFRT
   loop->magic = UV_LOOP_MAGIC;
+#endif
   return 0;
 
 fail_async_init:
@@ -225,7 +227,9 @@ void uv__loop_close(uv_loop_t* loop) {
   uv_mutex_destroy(&lfields->loop_metrics.lock);
   uv__free(lfields);
   loop->internal_fields = NULL;
+#ifdef USE_FFRT
   loop->magic = ~UV_LOOP_MAGIC;
+#endif
 }
 
 
