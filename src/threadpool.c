@@ -48,7 +48,9 @@
 #define CURSOR 5
 #endif
 
+#ifdef USE_FFRT
 static uv_rwlock_t g_closed_uv_loop_rwlock;
+#endif
 static uv_once_t once = UV_ONCE_INIT;
 static uv_cond_t cond;
 static uv_mutex_t mutex;
@@ -62,6 +64,7 @@ static struct uv__queue run_slow_work_message;
 static struct uv__queue slow_io_pending_wq;
 
 
+#ifdef USE_FFRT
 static void init_closed_uv_loop_rwlock_once(void) {
   uv_rwlock_init(&g_closed_uv_loop_rwlock);
 }
@@ -84,18 +87,17 @@ int is_uv_loop_good_magic(const uv_loop_t* loop) {
   UV_LOGE("loop:(%{public}zu:%{public}#x) invalid", (size_t)loop, loop->magic);
   return 0;
 }
+#endif
 
 
 void on_uv_loop_close(uv_loop_t* loop) {
   time_t t1, t2;
   time(&t1);
-  uv_start_trace(UV_TRACE_TAG, "Get Write Lock");
+#ifdef USE_FFRT
   uv_rwlock_wrlock(&g_closed_uv_loop_rwlock);
-  uv_end_trace(UV_TRACE_TAG);
   loop->magic = ~UV_LOOP_MAGIC;
-  uv_start_trace(UV_TRACE_TAG, "Release Write Lock");
   uv_rwlock_wrunlock(&g_closed_uv_loop_rwlock);
-  uv_end_trace(UV_TRACE_TAG);
+#endif
   time(&t2);
   UV_LOGI("loop:(%{public}zu) closed in %{public}zds", (size_t)loop, (ssize_t)(t2 - t1));
 }
@@ -326,7 +328,9 @@ static void init_once(void) {
   if (pthread_atfork(NULL, NULL, &reset_once))
     abort();
 #endif
+#ifdef USE_FFRT
   init_closed_uv_loop_rwlock_once();
+#endif
   init_threads();
 }
 
@@ -369,7 +373,7 @@ static void uv__task_done_wrapper(void* work, int status) {
 void uv__work_submit_to_eventloop(uv_req_t* req, struct uv__work* w, int qos) {
   uv_loop_t* loop = w->loop;
   rdlock_closed_uv_loop_rwlock();
-  if (loop->magic != UV_LOOP_MAGIC) {
+  if (!is_uv_loop_good_magic(loop)) {
     rdunlock_closed_uv_loop_rwlock();
     UV_LOGE("uv_loop(%{public}zu:%{public}#x), task is invalid",
             (size_t)loop, loop->magic);
@@ -383,6 +387,7 @@ void uv__work_submit_to_eventloop(uv_req_t* req, struct uv__work* w, int qos) {
     int status = (w->work == uv__cancelled) ? UV_ECANCELED : 0;
     struct uv_loop_data* addr = (struct uv_loop_data*)((uint64_t)loop->data -
       (UV_EVENT_MAGIC_OFFSET << UV_EVENT_MAGIC_OFFSETBITS));
+    uv_mutex_unlock(&loop->wq_mutex);
     if (req->type == UV_WORK) {
       addr->post_task_func((char*)req->reserved[1], uv__task_done_wrapper, (void*)w, status, qos);
     } else {
@@ -391,9 +396,9 @@ void uv__work_submit_to_eventloop(uv_req_t* req, struct uv__work* w, int qos) {
   } else {
     uv__loop_internal_fields_t* lfields = uv__get_internal_fields(loop);
     uv__queue_insert_tail(&(lfields->wq_sub[qos]), &w->wq);
+    uv_mutex_unlock(&loop->wq_mutex);
     uv_async_send(&loop->wq_async);
   }
-  uv_mutex_unlock(&loop->wq_mutex);
   rdunlock_closed_uv_loop_rwlock();
 }
 #endif
@@ -405,11 +410,13 @@ void uv__work_submit_to_eventloop(uv_req_t* req, struct uv__work* w, int qos) {
 static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
   int cancelled;
 
+#ifdef USE_FFRT
   rdlock_closed_uv_loop_rwlock();
   if (!is_uv_loop_good_magic(w->loop)) {
     rdunlock_closed_uv_loop_rwlock();
     return 0;
   }
+#endif
 
 #ifndef USE_FFRT
   uv_mutex_lock(&mutex);
@@ -429,7 +436,9 @@ static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
 #endif
 
   if (!cancelled) {
+#ifdef USE_FFRT
     rdunlock_closed_uv_loop_rwlock();
+#endif
     return UV_EBUSY;
   }
 
@@ -457,7 +466,9 @@ static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
   }
 #endif
   uv_mutex_unlock(&loop->wq_mutex);
+#ifdef USE_FFRT
   rdunlock_closed_uv_loop_rwlock();
+#endif
 
   return 0;
 }
@@ -472,16 +483,21 @@ void uv__work_done(uv_async_t* handle) {
   int nevents;
 
   loop = container_of(handle, uv_loop_t, wq_async);
-#ifdef USE_OHOS_DFX
-  if (uv_check_data_valid((struct uv_loop_data*)(loop->data)) != 0)
-    uv__print_active_reqs(loop, "complete");
-#endif
+#ifdef USE_FFRT
   rdlock_closed_uv_loop_rwlock();
   if (!is_uv_loop_good_magic(loop)) {
     rdunlock_closed_uv_loop_rwlock();
     return;
   }
   rdunlock_closed_uv_loop_rwlock();
+#endif
+
+#ifdef USE_OHOS_DFX
+  uv__print_active_reqs(loop, "complete");
+  if (uv_check_data_valid((struct uv_loop_data*)(loop->data)) == 0) {
+    return;
+  }
+#endif
 
   uv_mutex_lock(&loop->wq_mutex);
 #ifndef USE_FFRT

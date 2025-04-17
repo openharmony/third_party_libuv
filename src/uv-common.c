@@ -1069,7 +1069,7 @@ uint64_t uv__get_addr_tag(void* addr) {
 #if defined(USE_OHOS_DFX) && defined(__aarch64__)
 static uv_once_t thread_check_guard = UV_ONCE_INIT;
 void init_param_once() {
-  unsigned int param_value = GetIntParameter("persist.libuv.properties", -1);
+  int param_value = GetIntParameter("persist.libuv.properties", -1);
   if (param_value == 1) {
     g_multi_thread_check = 1;
   }
@@ -1094,7 +1094,6 @@ void uv__init_thread_id(uv_loop_t* loop) {
   if (uv__is_multi_thread_open()) {
     uv__loop_internal_fields_t* lfields_tid = uv__get_internal_fields(loop);
     lfields_tid->thread_id = 0;
-    lfields_tid->thread_id |= MULTI_THREAD_CHECK_LOOP_INIT;
   }
 }
 
@@ -1102,7 +1101,7 @@ void uv__init_thread_id(uv_loop_t* loop) {
 void uv__set_thread_id(uv_loop_t* loop) {
   if (uv__is_multi_thread_open()) {
     uv__loop_internal_fields_t* lfields_tid = uv__get_internal_fields(loop);
-    lfields_tid->thread_id |= (unsigned int)gettid();
+    lfields_tid->thread_id = (unsigned int)gettid();
   }
 }
 
@@ -1110,8 +1109,7 @@ void uv__set_thread_id(uv_loop_t* loop) {
 static unsigned int uv__get_thread_id(const uv_loop_t* loop) {
   if (uv__is_multi_thread_open()) {
     uv__loop_internal_fields_t* lfields_tid = uv__get_internal_fields(loop);
-    unsigned int thread_id = lfields_tid->thread_id & ~MULTI_THREAD_CHECK_LOOP_INIT;
-    return thread_id;
+    return lfields_tid->thread_id;
   } else {
     return 0;
   }
