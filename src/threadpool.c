@@ -503,7 +503,11 @@ void uv__work_done(uv_async_t* handle) {
   uv__loop_internal_fields_t* lfields = uv__get_internal_fields(loop);
   int i;
   uv__queue_init(&wq);
-  for (i = 4; i >= 0; i--) {
+  for (i = 5; i >= 0; i--) {
+    // No task in 4-th lfields->wq_sub queue.
+    if (i == 4) {
+      continue;
+    }
     if (!uv__queue_empty(&lfields->wq_sub[i])) {
       uv__queue_append(&lfields->wq_sub[i], &wq);
     }
@@ -740,8 +744,12 @@ int uv_queue_work_with_qos(uv_loop_t* loop,
   STATIC_ASSERT(uv_qos_utility == ffrt_qos_utility);
   STATIC_ASSERT(uv_qos_default == ffrt_qos_default);
   STATIC_ASSERT(uv_qos_user_initiated == ffrt_qos_user_initiated);
-  STATIC_ASSERT(uv_qos_user_interactive == ffrt_qos_deadline_request);
-  if (qos < ffrt_qos_background || qos > ffrt_qos_deadline_request) {
+  STATIC_ASSERT(uv_qos_user_interactive == ffrt_qos_user_interactive);
+  if (qos == uv_qos_reserved) {
+    UV_LOGW("Invaild qos %{public}d", (int)qos);
+    return UV_EINVAL;
+  }
+  if (qos < ffrt_qos_background || qos > ffrt_qos_user_interactive) {
     return UV_EINVAL;
   }
 
@@ -787,8 +795,12 @@ int uv_queue_work_with_qos_internal(uv_loop_t* loop,
   STATIC_ASSERT(uv_qos_utility == ffrt_qos_utility);
   STATIC_ASSERT(uv_qos_default == ffrt_qos_default);
   STATIC_ASSERT(uv_qos_user_initiated == ffrt_qos_user_initiated);
-  STATIC_ASSERT(uv_qos_user_interactive == ffrt_qos_deadline_request);
-  if (qos < ffrt_qos_background || qos > ffrt_qos_deadline_request) {
+  STATIC_ASSERT(uv_qos_user_interactive == ffrt_qos_user_interactive);
+  if (qos == uv_qos_reserved) {
+    UV_LOGW("Invaild qos %{public}d", (int)qos);
+    return UV_EINVAL;
+  }
+  if (qos < ffrt_qos_background || qos > ffrt_qos_user_interactive) {
     return UV_EINVAL;
   }
 
