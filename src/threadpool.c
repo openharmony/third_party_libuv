@@ -387,6 +387,7 @@ void uv__work_submit_to_eventloop(uv_req_t* req, struct uv__work* w, int qos) {
     int status = (w->work == uv__cancelled) ? UV_ECANCELED : 0;
     struct uv_loop_data* addr = (struct uv_loop_data*)((uint64_t)loop->data -
       (UV_EVENT_MAGIC_OFFSET << UV_EVENT_MAGIC_OFFSETBITS));
+    uv_mutex_unlock(&loop->wq_mutex);
     if (req->type == UV_WORK) {
       addr->post_task_func((char*)req->reserved[1], uv__task_done_wrapper, (void*)w, status, qos);
     } else {
@@ -395,9 +396,9 @@ void uv__work_submit_to_eventloop(uv_req_t* req, struct uv__work* w, int qos) {
   } else {
     uv__loop_internal_fields_t* lfields = uv__get_internal_fields(loop);
     uv__queue_insert_tail(&(lfields->wq_sub[qos]), &w->wq);
+    uv_mutex_unlock(&loop->wq_mutex);
     uv_async_send(&loop->wq_async);
   }
-  uv_mutex_unlock(&loop->wq_mutex);
   rdunlock_closed_uv_loop_rwlock();
 }
 #endif
@@ -492,8 +493,10 @@ void uv__work_done(uv_async_t* handle) {
 #endif
 
 #ifdef USE_OHOS_DFX
-  if (uv_check_data_valid((struct uv_loop_data*)(loop->data)) != 0)
-    uv__print_active_reqs(loop, "complete");
+  uv__print_active_reqs(loop, "complete");
+  if (uv_check_data_valid((struct uv_loop_data*)(loop->data)) == 0) {
+    return;
+  }
 #endif
 
   uv_mutex_lock(&loop->wq_mutex);
