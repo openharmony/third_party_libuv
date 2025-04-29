@@ -41,6 +41,10 @@
 # include <stdatomic.h>
 #endif
 
+#ifdef USE_FFRT
+#define WQ_SUB_QUEUE_LEN 6
+#endif
+
 #if defined(USE_OHOS_DFX) && defined(__aarch64__)
 #define MULTI_THREAD_CHECK_LOOP_INIT 0x80000000
 #endif
@@ -451,7 +455,7 @@ struct uv__loop_internal_fields_s {
   void* inv;  /* used by uv__platform_invalidate_fd() */
 #endif  /* __linux__ */
 #ifdef USE_FFRT
-  struct uv__queue wq_sub[5];
+  struct uv__queue wq_sub[WQ_SUB_QUEUE_LEN];
 #endif
 #if defined(USE_OHOS_DFX) && defined(__aarch64__)
   unsigned int thread_id;
