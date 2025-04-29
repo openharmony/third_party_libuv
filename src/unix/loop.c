@@ -57,6 +57,7 @@ int uv_loop_init(uv_loop_t* loop) {
   uv__queue_init(&(lfields_qos->wq_sub[uv_qos_utility]));
   uv__queue_init(&(lfields_qos->wq_sub[uv_qos_default]));
   uv__queue_init(&(lfields_qos->wq_sub[uv_qos_user_initiated]));
+  uv__queue_init(&(lfields_qos->wq_sub[uv_qos_reserved]));
   uv__queue_init(&(lfields_qos->wq_sub[uv_qos_user_interactive]));
 #endif
 
