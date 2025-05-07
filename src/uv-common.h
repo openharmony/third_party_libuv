@@ -457,6 +457,9 @@ struct uv__loop_internal_fields_s {
 #if defined(USE_OHOS_DFX) && defined(__aarch64__)
   unsigned int thread_id;
 #endif
+#ifdef __aarch64__
+  unsigned int register_flag;
+#endif
 };
 
 uint64_t uv__get_addr_tag(void* addr);
