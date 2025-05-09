@@ -22,9 +22,11 @@
 #include "internal.h"
 #include "uv_log.h"
 #ifdef USE_FFRT
+#include <sys/uio.h>
 #include "ffrt_inner.h"
 #include <sys/types.h>
 #include <sys/syscall.h>
+#define BUFFER_LENGTH 2
 #endif
 #include <assert.h>
 #include <errno.h>
@@ -470,6 +472,7 @@ static void uv__get_process_name(char* processName, int bufferLength) {
   }
 }
 
+
 static int uv__get_signal_flag() {
   static int trigger = -1;
 
@@ -484,6 +487,19 @@ static int uv__get_signal_flag() {
     }
   }
   return trigger;
+}
+
+
+static int isAddressValid(void* address) {
+  char buffer[BUFFER_LENGTH] = {0};
+  struct iovec local_iov = {.iov_base = buffer, .iov_len = sizeof(buffer)};
+  struct iovec remote_iov = {.iov_base = address, .iov_len = sizeof(buffer)};
+
+  ssize_t bytes_read = process_vm_readv(getpid(), &local_iov, 1, &remote_iov, 1, 0);
+  if (bytes_read == - 1) {
+    return -1;
+  }
+  return 0;
 }
 #endif
 
@@ -538,7 +554,13 @@ static void uv__signal_event(uv_loop_t* loop,
     for (i = 0; i < end; i += sizeof(uv__signal_msg_t)) {
       msg = (uv__signal_msg_t*) (buf + i);
       handle = msg->handle;
-
+#ifdef USE_FFRT
+      int ret = isAddressValid((void*)handle);
+      if (ret == -1) {
+        UV_LOGE("signal handle %{public}zu is invalid", (size_t)handle);
+        continue;
+      }
+#endif
       if (msg->signum == handle->signum) {
         assert(!(handle->flags & UV_HANDLE_CLOSING));
 #ifdef USE_FFRT
