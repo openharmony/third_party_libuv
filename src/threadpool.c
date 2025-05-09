@@ -493,10 +493,10 @@ void uv__work_done(uv_async_t* handle) {
 #endif
 
 #ifdef USE_OHOS_DFX
-  uv__print_active_reqs(loop, "complete");
   if (uv_check_data_valid((struct uv_loop_data*)(loop->data)) == 0) {
     return;
   }
+  uv__print_active_reqs(loop, "complete");
 #endif
 
   uv_mutex_lock(&loop->wq_mutex);
