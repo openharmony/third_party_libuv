@@ -649,11 +649,10 @@ static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
   uv__loop_internal_fields_t* lfields = uv__get_internal_fields(w->loop);
   int qos = (ffrt_qos_t)(intptr_t)req->reserved[0];
 
-  if (uv_check_data_valid((struct uv_loop_data*)(w->loop->data)) == 0) {
+  if (uv_check_data_valid(loop) == 0) {
     int status = (w->work == uv__cancelled) ? UV_ECANCELED : 0;
-    struct uv_loop_data* addr = (struct uv_loop_data*)((uint64_t)w->loop->data -
-      (UV_EVENT_MAGIC_OFFSET << UV_EVENT_MAGIC_OFFSETBITS));
-    addr->post_task_func(addr->event_handler, uv__task_done_wrapper, (void*)w, status, qos);
+    struct uv_loop_data* data = (struct uv_loop_data*)loop->data;
+    data->post_task_func(data->event_handler, uv__task_done_wrapper, (void*)w, status, qos);
   } else {
     uv__queue_insert_tail(&(lfields->wq_sub[qos]), &w->wq);
     uv_async_send(&loop->wq_async);
@@ -676,7 +675,7 @@ void uv__work_done(uv_async_t* handle) {
 
   loop = container_of(handle, uv_loop_t, wq_async);
 #ifdef USE_OHOS_DFX
-  if (uv_check_data_valid((struct uv_loop_data*)(loop->data)) != 0)
+  if (uv_check_data_valid(loop) != 0)
     uv__print_active_reqs(loop, "complete");
 #endif
   rdlock_closed_uv_loop_rwlock();
@@ -802,11 +801,10 @@ void uv__ffrt_work(ffrt_executor_task_t* data, ffrt_qos_t qos)
   uv_mutex_lock(&loop->wq_mutex);
   w->work = NULL; /* Signal uv_cancel() that the work req is done executing. */
 
-  if (uv_check_data_valid((struct uv_loop_data*)(loop->data)) == 0) {
+  if (uv_check_data_valid(loop) == 0) {
     int status = (w->work == uv__cancelled) ? UV_ECANCELED : 0;
-    struct uv_loop_data* addr = (struct uv_loop_data*)((uint64_t)loop->data -
-      (UV_EVENT_MAGIC_OFFSET << UV_EVENT_MAGIC_OFFSETBITS));
-    addr->post_task_func(addr->event_handler, uv__task_done_wrapper, (void*)w, status, qos);
+    struct uv_loop_data* data = (struct uv_loop_data*)loop->data;
+    data->post_task_func(data->event_handler, uv__task_done_wrapper, (void*)w, status, qos);
   } else {
     uv__loop_internal_fields_t* lfields = uv__get_internal_fields(loop);
     uv__queue_insert_tail(&(lfields->wq_sub[qos]), &w->wq);
@@ -946,7 +944,7 @@ int uv_queue_work_with_qos(uv_loop_t* loop,
   STATIC_ASSERT(uv_qos_user_initiated == ffrt_qos_user_initiated);
   STATIC_ASSERT(uv_qos_user_interactive == ffrt_qos_user_interactive);
   if (qos == uv_qos_reserved) {
-    UV_LOGW("Invaild qos %{public}d", (int)qos);
+    UV_LOGW("Invalid qos %{public}d", (int)qos);
     return UV_EINVAL;
   }
   if (qos < ffrt_qos_background || qos > ffrt_qos_user_interactive) {
