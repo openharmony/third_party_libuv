@@ -1942,17 +1942,13 @@ int uv_register_task_to_event(struct uv_loop_s* loop, uv_post_task func, void* h
   struct uv_loop_data* data = (struct uv_loop_data*)malloc(sizeof(struct uv_loop_data));
   if (data == NULL)
     return -1;
-  if ((uint64_t)data >> UV_EVENT_MAGIC_OFFSETBITS != 0x0) {
-    UV_LOGE("malloc address error");
-    free(data);
-    return -1;
-  }
 
   (void)memset(data, 0, sizeof(struct uv_loop_data));
   data->post_task_func = func;
   data->event_handler = handler;
-  data = (struct uv_loop_data*)((uint64_t)data | (UV_EVENT_MAGIC_OFFSET << UV_EVENT_MAGIC_OFFSETBITS));
   loop->data = (void *)data;
+  uv__loop_internal_fields_t* lfields_flag = uv__get_internal_fields(loop);
+  lfields_flag->register_flag = 1;
   return 0;
 #else
   return -1;
@@ -1963,13 +1959,12 @@ int uv_register_task_to_event(struct uv_loop_s* loop, uv_post_task func, void* h
 int uv_unregister_task_to_event(struct uv_loop_s* loop)
 {
 #if defined(__aarch64__)
-  if (loop == NULL || loop->data == NULL ||
-    ((uint64_t)loop->data >> UV_EVENT_MAGIC_OFFSETBITS) != (uint64_t)(UV_EVENT_MAGIC_OFFSET))
+  uv__loop_internal_fields_t* lfields_flag = uv__get_internal_fields(loop);
+  if (loop == NULL || loop->data == NULL || lfields_flag->register_flag == 0)
     return -1;
-  loop->data = (struct uv_loop_data*)((uint64_t)loop->data -
-    (UV_EVENT_MAGIC_OFFSET << UV_EVENT_MAGIC_OFFSETBITS));
   free(loop->data);
   loop->data = NULL;
+  lfields_flag->register_flag = 0;
   return 0;
 #else
   return -1;
@@ -1977,14 +1972,13 @@ int uv_unregister_task_to_event(struct uv_loop_s* loop)
 }
 
 
-int uv_check_data_valid(struct uv_loop_data* data) {
+int uv_check_data_valid(uv_loop_t* loop) {
 #if defined(__aarch64__)
-  if (data == NULL || ((uint64_t)data >> UV_EVENT_MAGIC_OFFSETBITS) != (uint64_t)(UV_EVENT_MAGIC_OFFSET)) {
+  uv__loop_internal_fields_t* lfields_flag = uv__get_internal_fields(loop);
+  if (loop == NULL || loop->data == NULL || lfields_flag->register_flag == 0) {
     return -1;
   }
-  struct uv_loop_data* addr = (struct uv_loop_data*)((uint64_t)data -
-    (UV_EVENT_MAGIC_OFFSET << UV_EVENT_MAGIC_OFFSETBITS));
-  if (addr->post_task_func == NULL) {
+  if (((struct uv_loop_data*)loop->data)->post_task_func == NULL) {
     UV_LOGE("post_task_func NULL");
     return -1;
   }
