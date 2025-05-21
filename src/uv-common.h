@@ -450,6 +450,9 @@ struct uv__loop_internal_fields_s {
 #ifdef USE_FFRT
   struct uv__queue wq_sub[4];
 #endif
+#ifdef __aarch64__
+  unsigned int register_flag;
+#endif
 };
 
 uint64_t uv__get_addr_tag(void* addr);

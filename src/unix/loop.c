@@ -67,6 +67,10 @@ int uv_loop_init(uv_loop_t* loop) {
   uv__queue_init(&loop->handle_queue);
 
   loop->active_handles = 0;
+#ifdef __aarch64__
+  uv__loop_internal_fields_t* lfields_flag = uv__get_internal_fields(loop);
+  lfields_flag->register_flag = 0;
+#endif
   loop->active_reqs.count = 0;
   loop->nfds = 0;
   loop->watchers = NULL;
