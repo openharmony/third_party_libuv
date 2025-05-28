@@ -804,13 +804,14 @@ void uv__ffrt_work(ffrt_executor_task_t* data, ffrt_qos_t qos)
   if (uv_check_data_valid(loop) == 0) {
     int status = (w->work == uv__cancelled) ? UV_ECANCELED : 0;
     struct uv_loop_data* data = (struct uv_loop_data*)loop->data;
+    uv_mutex_unlock(&loop->wq_mutex);
     data->post_task_func(data->event_handler, uv__task_done_wrapper, (void*)w, status, qos);
   } else {
     uv__loop_internal_fields_t* lfields = uv__get_internal_fields(loop);
     uv__queue_insert_tail(&(lfields->wq_sub[qos]), &w->wq);
+    uv_mutex_unlock(&loop->wq_mutex);
     uv_async_send(&loop->wq_async);
   }
-  uv_mutex_unlock(&loop->wq_mutex);
   rdunlock_closed_uv_loop_rwlock();
 }
 
