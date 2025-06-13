@@ -590,6 +590,10 @@ static void uv__queue_done(struct uv__work* w, int err) {
 void uv__ffrt_work(ffrt_executor_task_t* data, ffrt_qos_t qos)
 {
   struct uv__work* w = (struct uv__work *)data;
+  if (w == NULL || w->work == NULL) {
+    UV_LOGE("uv work is invalid");
+    return;
+  }
   w->work(w, (int)qos);
 }
 
