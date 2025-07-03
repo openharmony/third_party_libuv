@@ -442,6 +442,12 @@ UV_EXTERN const char* uv_err_name(int err);
 UV_EXTERN char* uv_err_name_r(int err, char* buf, size_t buflen);
 
 
+/*
+ * reserved[0] is used for ffrt qos
+ * reserved[1] is used to record task name
+ * reserved[2] is used for ffrt task handle
+ * reserved[3] is used to collect asynchronous task stack
+ */
 #define UV_REQ_FIELDS                                                         \
   /* public */                                                                \
   void* data;                                                                 \
@@ -1211,6 +1217,19 @@ UV_EXTERN int uv_queue_work_with_qos_internal(uv_loop_t* loop,
                                               uv_after_work_cb after_work_cb,
                                               uv_qos_t qos,
                                               const char* task_name);
+
+/*
+ * Ensures order preservation for asynchronous tasks sharing the same task ID
+ *
+ * This function guarantees in-order execution of asynchronous tasks by enqueuing them in an event loop's work queue.
+ * When multiple tasks share an identical 'taskId', they will execute sequentially in submission order.
+ */
+UV_EXTERN int uv_queue_work_ordered(uv_loop_t* loop,
+                                    uv_work_t* req,
+                                    uv_work_cb work_cb,
+                                    uv_after_work_cb after_work_cb,
+                                    uv_qos_t qos,
+                                    uint64_t taskId);
 
 struct uv_cpu_times_s {
   uint64_t user; /* milliseconds */
