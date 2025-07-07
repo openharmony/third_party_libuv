@@ -447,11 +447,11 @@ static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
   uv_mutex_unlock(&mutex);
 #else
   uv_mutex_lock(&w->loop->wq_mutex);
-  if (req->reserved[FFRT_TASK_DEPENDENCE] == NULL) {
+  if (req->type == UV_WORK && req->reserved[FFRT_TASK_DEPENDENCE] != NULL) {
+    cancelled = w->work != NULL && (ffrt_skip((ffrt_task_handle_t)req->reserved[FFRT_TASK_DEPENDENCE]) == 0);
+  } else {
     cancelled = !uv__queue_empty(&w->wq) && w->work != NULL
       && ffrt_executor_task_cancel(w, (ffrt_qos_t)(intptr_t)req->reserved[FFRT_QOS]);
-  } else {
-    cancelled = w->work != NULL && (ffrt_skip((ffrt_task_handle_t)req->reserved[FFRT_TASK_DEPENDENCE]) == 0);
   }
   
   uv_mutex_unlock(&w->loop->wq_mutex);
