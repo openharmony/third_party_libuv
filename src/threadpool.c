@@ -718,7 +718,7 @@ void uv__work_submit_ordered(uv_loop_t* loop,
                              ffrt_qos_t qos,
                              void (*work)(struct uv__work *w, int qos),
                              void (*done)(struct uv__work *w, int status),
-                             uint64_t taskId) {
+                             uintptr_t taskId) {
   uv_once(&once, init_once);
   ffrt_task_attr_t attr;
   ffrt_task_attr_init(&attr);
@@ -918,7 +918,7 @@ int uv_queue_work_ordered(uv_loop_t* loop,
                           uv_work_cb work_cb,
                           uv_after_work_cb after_work_cb,
                           uv_qos_t qos,
-                          uint64_t taskId) {
+                          uintptr_t taskId) {
 #ifdef USE_FFRT
   if (work_cb == NULL)
     return UV_EINVAL;
