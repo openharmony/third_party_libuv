@@ -1229,7 +1229,7 @@ UV_EXTERN int uv_queue_work_ordered(uv_loop_t* loop,
                                     uv_work_cb work_cb,
                                     uv_after_work_cb after_work_cb,
                                     uv_qos_t qos,
-                                    uint64_t taskId);
+                                    uintptr_t taskId);
 
 struct uv_cpu_times_s {
   uint64_t user; /* milliseconds */
