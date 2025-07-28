@@ -24,7 +24,9 @@
 #include <string.h>
 
 #include "../src/strscpy.h"
-//#include "../src/strscpy.c"
+#ifndef USE_OHOS_DFX
+#include "../src/strscpy.c"
+#endif
 
 TEST_IMPL(strscpy) {
   char d[4];

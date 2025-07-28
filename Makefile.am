@@ -90,7 +90,9 @@ libuv_la_SOURCES += src/win/async.c \
                     src/win/winapi.c \
                     src/win/winapi.h \
                     src/win/winsock.c \
-                    src/win/winsock.h
+                    src/win/winsock.h \
+                    src/win/log_win.c \
+                    src/win/trace_win.c
 
 else  # WINNT
 
@@ -114,7 +116,9 @@ libuv_la_SOURCES += src/unix/async.c \
                    src/unix/tcp.c \
                    src/unix/thread.c \
                    src/unix/tty.c \
-                   src/unix/udp.c
+                   src/unix/udp.c \
+                   src/unix/log_unix.c \
+                   src/unix/trace_unix.c
 
 endif  # WINNT
 
