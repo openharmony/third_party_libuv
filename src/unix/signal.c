@@ -557,7 +557,7 @@ static void uv__signal_event(uv_loop_t* loop,
 #ifdef USE_FFRT
       int ret = isAddressValid((void*)handle);
       if (ret == -1) {
-        UV_LOGE("signal handle %{public}zu is invalid", (size_t)handle);
+        UV_LOGE("signal handle %{public}zu is invalid", (size_t)handle % UV_ADDR_MOD);
         continue;
       }
 #endif

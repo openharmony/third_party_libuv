@@ -95,7 +95,7 @@ int is_uv_loop_good_magic(const uv_loop_t* loop) {
   if (loop->magic == UV_LOOP_MAGIC) {
     return 1;
   }
-  UV_LOGE("loop:(%{public}zu:%{public}#x) invalid", (size_t)loop, loop->magic);
+  UV_LOGE("loop:(%{public}zu:%{public}#x) invalid", (size_t)loop % UV_ADDR_MOD, loop->magic);
   return 0;
 }
 #endif
@@ -110,7 +110,7 @@ void on_uv_loop_close(uv_loop_t* loop) {
   uv_rwlock_wrunlock(&g_closed_uv_loop_rwlock);
 #endif
   time(&t2);
-  UV_LOGI("loop:(%{public}zu) closed in %{public}zds", (size_t)loop, (ssize_t)(t2 - t1));
+  UV_LOGI("loop:(%{public}zu) closed in %{public}zds", (size_t)loop % UV_ADDR_MOD, (ssize_t)(t2 - t1));
 }
 
 
@@ -365,7 +365,7 @@ static void uv__print_active_reqs(uv_loop_t* loop, const char* flag) {
   unsigned int count = loop->active_reqs.count;
   if (count == MIN_REQS_THRESHOLD || count == MIN_REQS_THRESHOLD + CURSOR ||
       count == MAX_REQS_THRESHOLD || count == MAX_REQS_THRESHOLD + CURSOR) {
-    UV_LOGW("loop:%{public}zu, flag:%{public}s, active reqs:%{public}u", (size_t)loop, flag, count);
+    UV_LOGW("loop:%{public}zu, flag:%{public}s, active reqs:%{public}u", (size_t)loop % UV_ADDR_MOD, flag, count);
   }
 #else
   return;
@@ -394,7 +394,7 @@ void uv__work_submit_to_eventloop(uv_req_t* req, struct uv__work* w, int qos) {
   if (!is_uv_loop_good_magic(loop)) {
     rdunlock_closed_uv_loop_rwlock();
     UV_LOGE("uv_loop(%{public}zu:%{public}#x), task is invalid",
-            (size_t)loop, loop->magic);
+            (size_t)loop % UV_ADDR_MOD, loop->magic);
     return;
   }
 
