@@ -675,7 +675,7 @@ int uv__platform_loop_init(uv_loop_t* loop) {
 
   uv__iou_init(loop->backend_fd, &lfields->iou, 64, UV__IORING_SETUP_SQPOLL);
   uv__iou_init(loop->backend_fd, &lfields->ctl, 256, 0);
-  UV_LOGI("init:%{public}zu, backend_fd:%{public}d", (size_t)loop, loop->backend_fd);
+  UV_LOGI("init:%{public}zu, backend_fd:%{public}d", (size_t)loop % UV_ADDR_MOD, loop->backend_fd);
   return 0;
 }
 
@@ -1551,7 +1551,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
          */
 #ifdef USE_FFRT
         if (ffrt_get_cur_task() != NULL) {
-          UV_LOGF("fd %{public}d don't belong to loop %{public}zu", fd, (size_t)loop);
+          UV_LOGF("fd %{public}d don't belong to loop %{public}zu", fd, (size_t)loop % UV_ADDR_MOD);
         }
 #endif
         uv__epoll_ctl_prep(epollfd, ctl, &prep, EPOLL_CTL_DEL, fd, pe);
