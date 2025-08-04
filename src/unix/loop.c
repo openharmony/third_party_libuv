@@ -33,7 +33,7 @@ int uv_loop_init(uv_loop_t* loop) {
   void* saved_data;
   int err;
 
-  UV_LOGI("init:%{public}zu", (size_t)loop);
+  UV_LOGI("init:%{public}zu", (size_t)loop % UV_ADDR_MOD);
   saved_data = loop->data;
   memset(loop, 0, sizeof(*loop));
   loop->data = saved_data;
@@ -200,7 +200,7 @@ void uv__loop_close(uv_loop_t* loop) {
 #else
     uv__close(loop->backend_fd);
 #endif
-    UV_LOGI("close:%{public}zu, backend_fd:%{public}d", (size_t)loop, loop->backend_fd);
+    UV_LOGI("close:%{public}zu, backend_fd:%{public}d", (size_t)loop % UV_ADDR_MOD, loop->backend_fd);
     loop->backend_fd = -1;
   }
 

@@ -548,7 +548,7 @@ void uv_walk(uv_loop_t* loop, uv_walk_cb walk_cb, void* arg) {
   struct uv__queue* q;
   uv_handle_t* h;
 
-  UV_LOGI("clean up handles in loop(%{public}zu)", (size_t)loop);
+  UV_LOGI("clean up handles in loop(%{public}zu)", (size_t)loop % UV_ADDR_MOD);
   uv__queue_move(&loop->handle_queue, &queue);
   while (!uv__queue_empty(&queue)) {
     q = uv__queue_head(&queue);
@@ -870,7 +870,7 @@ int uv_loop_close(uv_loop_t* loop) {
 
   if (uv__has_active_reqs(loop)) {
 #ifdef USE_OHOS_DFX
-    UV_LOGI("loop:%{public}zu, active reqs:%{public}u", (size_t)loop, loop->active_reqs.count);
+    UV_LOGI("loop:%{public}zu, active reqs:%{public}u", (size_t)loop % UV_ADDR_MOD, loop->active_reqs.count);
 #endif
     return UV_EBUSY;
   }
@@ -878,7 +878,7 @@ int uv_loop_close(uv_loop_t* loop) {
     h = uv__queue_data(q, uv_handle_t, handle_queue);
     if (!(h->flags & UV_HANDLE_INTERNAL)) {
 #ifdef USE_OHOS_DFX
-      UV_LOGI("loop:%{public}zu, active handle:%{public}zu", (size_t)loop, (size_t)h);
+      UV_LOGI("loop:%{public}zu, active handle:%{public}zu", (size_t)loop % UV_ADDR_MOD, (size_t)h);
 #endif
       return UV_EBUSY;
     }

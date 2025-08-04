@@ -16,6 +16,7 @@
 #ifndef UV_LOG_H
 #define UV_LOG_H
 
+#define UV_ADDR_MOD 10000
 #ifdef USE_OHOS_DFX
 #include "hilog/log.h"
 #define UV_LOGI(fmt, ...) HILOG_IMPL(LOG_CORE, LOG_INFO, 0xD003301, "LIBUV", fmt, ##__VA_ARGS__)
