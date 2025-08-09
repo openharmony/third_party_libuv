@@ -453,7 +453,6 @@ static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
     cancelled = !uv__queue_empty(&w->wq) && w->work != NULL
       && ffrt_executor_task_cancel(w, (ffrt_qos_t)(intptr_t)req->reserved[FFRT_QOS]);
   }
-  
   uv_mutex_unlock(&w->loop->wq_mutex);
 #endif
 
