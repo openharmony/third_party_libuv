@@ -464,18 +464,18 @@ struct uv__loop_internal_fields_s {
 
 uint64_t uv__get_addr_tag(void* addr);
 
-#if defined(USE_OHOS_DFX) && defined(__aarch64__)
-int uv__is_multi_thread_open(void);
-void uv__init_thread_id(uv_loop_t* loop);
-void uv__set_thread_id(uv_loop_t* loop);
-void uv__multi_thread_check_unify(const uv_loop_t* loop, const char* funcName);
-#endif
-
 #ifdef USE_FFRT
 #define SPLIT_CHAR_FIRST ':'
 #define SPLIT_CHAR_SECOND '#'
 #define TASK_NAME_LENGTH 64
 void uv__work_submit_to_eventloop(uv_req_t* req, struct uv__work* w, int qos);
 int uv__copy_taskname(uv_req_t* req, const char* task_name);
+#endif
+
+#if defined(USE_OHOS_DFX) && defined(__aarch64__)
+int uv__is_multi_thread_open(void);
+void uv__init_thread_id(uv_loop_t* loop);
+void uv__set_thread_id(uv_loop_t* loop);
+void uv__multi_thread_check_unify(const uv_loop_t* loop, const char* funcName);
 #endif
 #endif /* UV_COMMON_H_ */

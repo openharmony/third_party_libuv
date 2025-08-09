@@ -460,6 +460,7 @@ static int uv__signal_start(uv_signal_t* handle,
 }
 
 
+
 #ifdef USE_FFRT
 static void uv__get_process_name(char* processName, int bufferLength) {
   int fd = open("/proc/self/cmdline", O_RDONLY);
@@ -496,7 +497,7 @@ static int isAddressValid(void* address) {
   struct iovec remote_iov = {.iov_base = address, .iov_len = sizeof(buffer)};
 
   ssize_t bytes_read = process_vm_readv(getpid(), &local_iov, 1, &remote_iov, 1, 0);
-  if (bytes_read == - 1) {
+  if (bytes_read == -1) {
     return -1;
   }
   return 0;
@@ -515,9 +516,11 @@ static void uv__signal_event(uv_loop_t* loop,
 
   bytes = 0;
   end = 0;
+
 #ifdef USE_FFRT
   unsigned int trigger = uv__get_signal_flag();
 #endif
+
   do {
     r = read(loop->signal_pipefd[0], buf + bytes, sizeof(buf) - bytes);
 
