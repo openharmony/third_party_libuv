@@ -555,6 +555,11 @@ static void uv__signal_event(uv_loop_t* loop,
     end = (bytes / sizeof(uv__signal_msg_t)) * sizeof(uv__signal_msg_t);
 
     for (i = 0; i < end; i += sizeof(uv__signal_msg_t)) {
+#ifdef USE_FFRT
+      if (trigger == 1) {
+        break;
+      }
+#endif
       msg = (uv__signal_msg_t*) (buf + i);
       handle = msg->handle;
 #ifdef USE_FFRT
@@ -566,13 +571,7 @@ static void uv__signal_event(uv_loop_t* loop,
 #endif
       if (msg->signum == handle->signum) {
         assert(!(handle->flags & UV_HANDLE_CLOSING));
-#ifdef USE_FFRT
-        if (trigger != 1) {
-          handle->signal_cb(handle, handle->signum);
-        }
-#else
         handle->signal_cb(handle, handle->signum);
-#endif
       }
 
       handle->dispatched_signals++;
