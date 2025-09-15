@@ -478,4 +478,15 @@ void uv__init_thread_id(uv_loop_t* loop);
 void uv__set_thread_id(uv_loop_t* loop);
 void uv__multi_thread_check_unify(const uv_loop_t* loop, const char* funcName);
 #endif
+
+typedef enum {
+  /* ffrt qos */
+  FFRT_QOS = 0,
+  /* record task name */
+  DFX_TASK_NAME,
+  /* ffrt task handle */
+  FFRT_TASK_DEPENDENCE,
+  /* collect asynchronous task stack */
+  DFX_ASYNC_STACK,
+} req_reversed;
 #endif /* UV_COMMON_H_ */
