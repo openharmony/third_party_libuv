@@ -18,67 +18,18 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
+static UvCollectAsyncStackFunc g_collectAsyncStackFunc = NULL;
+static UvSetStackIdFunc g_setStackIdFunc = NULL;
 
-typedef void(*LibuvSetStackIdFunc)(uint64_t stackId);
-typedef uint64_t(*LibuvCollectAsyncStackFunc)();
-static LibuvCollectAsyncStackFunc g_collectAsyncStackFunc = NULL;
-static LibuvSetStackIdFunc g_setStackIdFunc = NULL;
-typedef enum {
-    ASYNC_DFX_NOT_INIT,
-    ASYNC_DFX_DISABLE,
-    ASYNC_DFX_ENABLE
-} AsyncDfxInitStatus;
-
-static AsyncDfxInitStatus g_enabledLibuvAsyncStackStatus = ASYNC_DFX_NOT_INIT;
-static pthread_mutex_t g_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-static void LoadDfxAsyncStackLib()
+void LibuvSetAsyncStackFunc(UvCollectAsyncStackFunc collectAsyncStackFunc, UvSetStackIdFunc setStackIdFunc)
 {
-    g_enabledLibuvAsyncStackStatus = ASYNC_DFX_DISABLE;
-    const char* debuggableEnv = getenv("HAP_DEBUGGABLE");
-    if ((debuggableEnv == NULL) || (strcmp(debuggableEnv, "true") != 0)) {
-        return;
-    }
-
-    // if async stack is not enabled, the lib should not be unloaded
-    void* asyncStackLibHandle = dlopen("libasync_stack.z.so", RTLD_NOW);
-    if (asyncStackLibHandle == NULL) {
-        return;
-    }
-
-    g_collectAsyncStackFunc = (LibuvCollectAsyncStackFunc)(dlsym(asyncStackLibHandle, "CollectAsyncStack"));
-    if (g_collectAsyncStackFunc == NULL) {
-        dlclose(asyncStackLibHandle);
-        asyncStackLibHandle = NULL;
-        return;
-    }
-
-    g_setStackIdFunc = (LibuvSetStackIdFunc)(dlsym(asyncStackLibHandle, "SetStackId"));
-    if (g_setStackIdFunc == NULL) {
-        g_collectAsyncStackFunc = NULL;
-        dlclose(asyncStackLibHandle);
-        asyncStackLibHandle = NULL;
-        return;
-    }
-
-    g_enabledLibuvAsyncStackStatus = ASYNC_DFX_ENABLE;
-}
-
-static AsyncDfxInitStatus LibuvAsyncStackInit()
-{
-    if (g_enabledLibuvAsyncStackStatus == ASYNC_DFX_NOT_INIT) {
-        pthread_mutex_lock(&g_mutex);
-        if (g_enabledLibuvAsyncStackStatus == ASYNC_DFX_NOT_INIT) {
-            LoadDfxAsyncStackLib();
-        }
-        pthread_mutex_unlock(&g_mutex);
-    }
-    return g_enabledLibuvAsyncStackStatus;
+    g_collectAsyncStackFunc = collectAsyncStackFunc;
+    g_setStackIdFunc = setStackIdFunc;
 }
 
 uint64_t LibuvCollectAsyncStack(void)
 {
-    if (LibuvAsyncStackInit() == ASYNC_DFX_ENABLE) {
+    if (g_collectAsyncStackFunc != NULL) {
         return g_collectAsyncStackFunc();
     }
 
@@ -87,7 +38,7 @@ uint64_t LibuvCollectAsyncStack(void)
 
 void LibuvSetStackId(uint64_t stackId)
 {
-    if (LibuvAsyncStackInit() == ASYNC_DFX_ENABLE) {
+    if (g_collectAsyncStackFunc != NULL) {
         return g_setStackIdFunc(stackId);
     }
 }

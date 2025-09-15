@@ -66,6 +66,9 @@ int uv_timer_init(uv_loop_t* loop, uv_timer_t* handle) {
   handle->timer_cb = NULL;
   handle->timeout = 0;
   handle->repeat = 0;
+#ifdef ASYNC_STACKTRACE
+  handle->u.reserved[DFX_ASYNC_STACK] = 0;
+#endif
   return 0;
 }
 
@@ -96,7 +99,9 @@ int uv_timer_start(uv_timer_t* handle,
   handle->start_id = handle->loop->timer_counter++;
 
 #ifdef ASYNC_STACKTRACE
-  handle->u.reserved[3] = (void*)LibuvCollectAsyncStack();
+  if (handle->u.reserved[DFX_ASYNC_STACK] == 0) {
+    handle->u.reserved[DFX_ASYNC_STACK] = (void*)LibuvCollectAsyncStack();
+  }
 #endif
 
   heap_insert(timer_heap(handle->loop),
@@ -196,7 +201,7 @@ void uv__run_timers(uv_loop_t* loop) {
     uv_timer_stop(handle);
     uv_timer_again(handle);
 #ifdef ASYNC_STACKTRACE
-    LibuvSetStackId((uint64_t)handle->u.reserved[3]);
+    LibuvSetStackId((uint64_t)handle->u.reserved[DFX_ASYNC_STACK]);
 #endif
     handle->timer_cb(handle);
   }
