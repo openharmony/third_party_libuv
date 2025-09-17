@@ -1962,11 +1962,22 @@ union uv_any_req {
 
 typedef void (*uv_io_cb)(void* work, int status);
 typedef void (*uv_post_task)(const char* task_name, uv_io_cb func, void* work, int status, int prio);
+typedef void (*uv_execute_specify_task)(uv_loop_t* loop);
 
 struct uv_loop_data {
   void* event_handler;
   uv_post_task post_task_func;
+#ifdef ENABLE_WORKER_PRIORITY
+  uv_execute_specify_task high_prio_task;
+#endif
 };
+
+typedef enum {
+  UV_REGISTER_MAINTHREAD_FLAG = 1,
+#ifdef ENABLE_WORKER_PRIORITY
+  UV_REGISTER_WORKER_FLAG = 2
+#endif
+} uv_register_flag;
 
 struct uv_loop_s {
   /* User data - use this for whatever. */
@@ -1987,9 +1998,12 @@ struct uv_loop_s {
 
 UV_EXTERN void* uv_loop_get_data(const uv_loop_t*);
 UV_EXTERN void uv_loop_set_data(uv_loop_t*, void* data);
+
 UV_EXTERN int uv_register_task_to_event(struct uv_loop_s* loop, uv_post_task func, void* handler);
+UV_EXTERN int uv_register_task_to_worker(struct uv_loop_s* loop, uv_execute_specify_task func);
 UV_EXTERN int uv_unregister_task_to_event(struct uv_loop_s* loop);
 UV_EXTERN int uv_check_data_valid(uv_loop_t* loop);
+UV_EXTERN void uv_call_specify_task(uv_loop_t* loop);
 
 /* String utilities needed internally for dealing with Windows. */
 size_t uv_utf16_length_as_wtf8(const uint16_t* utf16,
