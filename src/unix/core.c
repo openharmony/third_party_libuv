@@ -1937,59 +1937,86 @@ unsigned int uv_available_parallelism(void) {
 #endif  /* __linux__ */
 }
 
-int uv_register_task_to_event(struct uv_loop_s* loop, uv_post_task func, void* handler)
-{
-#if defined(__aarch64__)
-  if (loop == NULL)
+
+int uv__register_callback_to_eventloop(struct uv_loop_s* loop, void* func, void* handler, int flag) {
+  if (loop == NULL) {
     return -1;
+  }
 
   struct uv_loop_data* data = (struct uv_loop_data*)malloc(sizeof(struct uv_loop_data));
-  if (data == NULL)
+  if (data == NULL) {
     return -1;
+  }
 
   (void)memset(data, 0, sizeof(struct uv_loop_data));
-  data->post_task_func = func;
   data->event_handler = handler;
+  if (flag == UV_REGISTER_MAINTHREAD_FLAG) {
+    data->post_task_func = (uv_post_task)func;
+#ifdef ENABLE_WORKER_PRIORITY
+  } else if (flag == UV_REGISTER_WORKER_FLAG) {
+    data->high_prio_task = (uv_execute_specify_task)func;
+#endif
+  }
   loop->data = (void *)data;
+
   uv__loop_internal_fields_t* lfields_flag = uv__get_internal_fields(loop);
-  lfields_flag->register_flag = 1;
+  lfields_flag->register_flag = flag;
   return 0;
+}
+
+
+int uv_register_task_to_event(struct uv_loop_s* loop, uv_post_task func, void* handler) {
+  return uv__register_callback_to_eventloop(loop, (void*)func, handler, UV_REGISTER_MAINTHREAD_FLAG);
+}
+
+
+int uv_register_task_to_worker(struct uv_loop_s* loop, uv_execute_specify_task func) {
+#ifdef ENABLE_WORKER_PRIORITY
+  return uv__register_callback_to_eventloop(loop, (void*)func, NULL, UV_REGISTER_WORKER_FLAG);
 #else
   return -1;
 #endif
 }
 
 
-int uv_unregister_task_to_event(struct uv_loop_s* loop)
-{
-#if defined(__aarch64__)
+int uv_unregister_task_to_event(struct uv_loop_s* loop) {
   uv__loop_internal_fields_t* lfields_flag = uv__get_internal_fields(loop);
-  if (loop == NULL || loop->data == NULL || lfields_flag->register_flag == 0)
+  if (loop == NULL || loop->data == NULL || lfields_flag->register_flag == 0) {
     return -1;
+  }
   free(loop->data);
   loop->data = NULL;
   lfields_flag->register_flag = 0;
   return 0;
-#else
-  return -1;
-#endif
 }
 
 
 int uv_check_data_valid(uv_loop_t* loop) {
-#if defined(__aarch64__)
   uv__loop_internal_fields_t* lfields_flag = uv__get_internal_fields(loop);
   if (loop == NULL || loop->data == NULL || lfields_flag->register_flag == 0) {
     return -1;
   }
 
-  if (((struct uv_loop_data*)loop->data)->post_task_func == NULL) {
-    UV_LOGE("post_task_func NULL");
-    return -1;
+  if (((struct uv_loop_data*)loop->data)->post_task_func != NULL) {
+    return lfields_flag->register_flag;
   }
-  return 0;
-#else
-  return -1;
+
+#ifdef ENABLE_WORKER_PRIORITY
+  if (((struct uv_loop_data*)loop->data)->high_prio_task != NULL) {
+    return lfields_flag->register_flag;
+  }
 #endif
+  return -1;
+}
+
+
+void uv_call_specify_task(uv_loop_t* loop) {
+#ifdef ENABLE_WORKER_PRIORITY
+  if (uv_check_data_valid(loop) == UV_REGISTER_WORKER_FLAG) {
+    struct uv_loop_data* data = (struct uv_loop_data*)loop->data;
+    data->high_prio_task(loop);
+  }
+#endif
+  return;
 }
 
