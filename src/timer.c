@@ -104,7 +104,7 @@ int uv_timer_start(uv_timer_t* handle,
               timer_less_than);
   uv__handle_start(handle);
 #ifdef __linux__
-  if (uv_check_data_valid(handle->loop) == 0) {
+  if (uv_check_data_valid(handle->loop) == UV_REGISTER_MAINTHREAD_FLAG) {
     uv_async_send(&handle->loop->wq_async);
   }
 #endif
@@ -197,6 +197,9 @@ void uv__run_timers(uv_loop_t* loop) {
     uv_timer_again(handle);
 #ifdef ASYNC_STACKTRACE
     LibuvSetStackId((uint64_t)handle->u.reserved[3]);
+#endif
+#ifdef ENABLE_WORKER_PRIORITY
+    uv_call_specify_task(loop);
 #endif
     handle->timer_cb(handle);
   }
