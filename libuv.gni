@@ -16,4 +16,5 @@ declare_args() {
   enable_async_stack = true
   enable_uv_statisic = false
   use_ohos_dfx = true
+  enable_worker_prio = true
 }

@@ -185,6 +185,10 @@ if (defined(ohos_lite)) {
         defines += [ "ASYNC_STACKTRACE" ]
       }
 
+      if (enable_worker_prio && is_ohos) {
+        defines += [ "ENABLE_WORKER_PRIORITY" ]
+      }
+
       if (enable_uv_statisic && is_ohos) {
         cflags +=
             [ "-Wno-frame-address" ]  # for use of __builtin_return_address
