@@ -137,6 +137,9 @@ static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 #endif
   }
 
+#ifdef ENABLE_WORKER_PRIORITY
+  uv_call_specify_task(loop);
+#endif
   uv__queue_move(&loop->async_handles, &queue);
   while (!uv__queue_empty(&queue)) {
     q = uv__queue_head(&queue);
@@ -152,10 +155,11 @@ static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 
     if (h->async_cb == NULL)
       continue;
-#ifdef ENABLE_WORKER_PRIORITY
-    uv_call_specify_task(h->loop);
-#endif
+
     h->async_cb(h);
+#ifdef ENABLE_WORKER_PRIORITY
+    uv_call_specify_task(loop);
+#endif
   }
 }
 
