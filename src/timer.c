@@ -184,6 +184,9 @@ void uv__run_timers(uv_loop_t* loop) {
   struct heap_node* heap_node;
   uv_timer_t* handle;
 
+#ifdef ENABLE_WORKER_PRIORITY
+  uv_call_specify_task(loop);
+#endif
   for (;;) {
     heap_node = heap_min(timer_heap(loop));
     if (heap_node == NULL)
@@ -198,10 +201,10 @@ void uv__run_timers(uv_loop_t* loop) {
 #ifdef ASYNC_STACKTRACE
     LibuvSetStackId((uint64_t)handle->u.reserved[3]);
 #endif
+    handle->timer_cb(handle);
 #ifdef ENABLE_WORKER_PRIORITY
     uv_call_specify_task(loop);
 #endif
-    handle->timer_cb(handle);
   }
 }
 
