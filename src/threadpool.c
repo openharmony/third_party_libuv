@@ -48,17 +48,6 @@
 #define CURSOR 5
 #endif
 
-typedef enum {
-  /* ffrt qos */
-  FFRT_QOS = 0,
-  /* record task name */
-  DFX_TASK_NAME,
-  /* ffrt task handle */
-  FFRT_TASK_DEPENDENCE,
-  /* collect asynchronous task stack */
-  DFX_ASYNC_STACK,
-} req_reversed;
-
 #ifdef USE_FFRT
 static uv_rwlock_t g_closed_uv_loop_rwlock;
 #endif
