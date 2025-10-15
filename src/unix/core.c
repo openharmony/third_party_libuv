@@ -636,6 +636,8 @@ int uv__close_nocancel(int fd) {
   rc = syscall(SYS_close, fd);
   __sanitizer_syscall_post_close(rc, fd);
   return rc;
+#elif defined(__linux__) && defined(__MUSL__) 
+  return close(fd);
 #elif defined(__linux__) && !defined(__SANITIZE_THREAD__)
   return syscall(SYS_close, fd);
 #else

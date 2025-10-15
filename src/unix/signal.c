@@ -469,7 +469,7 @@ static void uv__get_process_name(char* processName, int bufferLength) {
     if (ret != -1) {
       processName[ret] = '\0';
     }
-    syscall(SYS_close, fd);
+    close(fd);
   }
 }
 
