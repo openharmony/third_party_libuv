@@ -870,7 +870,7 @@ int uv_loop_close(uv_loop_t* loop) {
 
   if (uv__has_active_reqs(loop)) {
 #ifdef USE_OHOS_DFX
-    UV_LOGI("loop:%{public}zu, active reqs:%{public}u", (size_t)loop % UV_ADDR_MOD, loop->active_reqs.count);
+    UV_LOGI("loop:%{public}zu, active reqs:%{public}u", (size_t)loop % UV_ADDR_MOD, uv__atomic_read(loop));
 #endif
     return UV_EBUSY;
   }
