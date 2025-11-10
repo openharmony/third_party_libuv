@@ -350,8 +350,8 @@ void uv__work_submit(uv_loop_t* loop,
 
 
 static void uv__print_active_reqs(uv_loop_t* loop, const char* flag) {
-#ifdef USE_OHOS_DFX
-  unsigned int count = loop->active_reqs.count;
+#if defined(USE_FFRT) && defined(USE_OHOS_DFX)
+  unsigned int count = uv__atomic_read(loop);
   if (count == MIN_REQS_THRESHOLD || count == MIN_REQS_THRESHOLD + CURSOR ||
       count == MAX_REQS_THRESHOLD || count == MAX_REQS_THRESHOLD + CURSOR) {
     UV_LOGW("loop:%{public}zu, flag:%{public}s, active reqs:%{public}u", (size_t)loop % UV_ADDR_MOD, flag, count);
