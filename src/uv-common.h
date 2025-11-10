@@ -237,10 +237,13 @@ void uv__process_title_cleanup(void);
 void uv__signal_cleanup(void);
 void uv__threadpool_cleanup(void);
 
-#define uv__has_active_reqs(loop)                                             \
-  ((loop)->active_reqs.count > 0)
-
 #if defined(USE_FFRT) && defined(USE_OHOS_DFX)
+static inline unsigned int uv__atomic_read(uv_loop_t* loop) {
+  return __sync_fetch_and_add((unsigned int*)(&((loop)->active_reqs.count)), 0);
+}
+#define uv__has_active_reqs(loop)                                             \
+  (uv__atomic_read(loop) > 0)
+
 #define uv__req_register(loop, req)                                           \
   do {                                                                        \
     self_increase((unsigned int*)(&((loop)->active_reqs.count)));             \
@@ -255,6 +258,9 @@ void uv__threadpool_cleanup(void);
   }                                                                           \
   while (0)
 #else
+#define uv__has_active_reqs(loop)                                             \
+  ((loop)->active_reqs.count > 0)
+
 #define uv__req_register(loop, req)                                           \
   do {                                                                        \
     (loop)->active_reqs.count++;                                              \
