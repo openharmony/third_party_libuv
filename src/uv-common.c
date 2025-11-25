@@ -38,7 +38,7 @@
 # include <sys/un.h> /* AF_UNIX, sockaddr_un */
 #endif
 
-#if defined(USE_OHOS_DFX) && defined(__aarch64__)
+#if defined(USE_OHOS_DFX)
 #include "parameter.h"
 #include <unistd.h>
 #include <sys/types.h>
@@ -1081,7 +1081,7 @@ int uv__copy_taskname(uv_req_t* req, const char* task_name) {
 #endif
 
 
-#if defined(USE_OHOS_DFX) && defined(__aarch64__)
+#if defined(USE_OHOS_DFX)
 static uv_once_t thread_check_guard = UV_ONCE_INIT;
 void init_param_once() {
   int param_value = GetIntParameter("persist.libuv.properties", -1);

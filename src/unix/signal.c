@@ -22,11 +22,15 @@
 #include "internal.h"
 #include "uv_log.h"
 #ifdef USE_FFRT
-#include <sys/uio.h>
 #include "ffrt_inner.h"
+#endif
+#ifdef USE_OHOS_DFX
+#include <sys/uio.h>
 #include <sys/types.h>
 #include <sys/syscall.h>
+#include "hisysevent_c.h"
 #define BUFFER_LENGTH 2
+#define UV_PROCESS_NAME_LENGTH 1024
 #endif
 #include <assert.h>
 #include <errno.h>
@@ -460,13 +464,12 @@ static int uv__signal_start(uv_signal_t* handle,
 }
 
 
-
-#ifdef USE_FFRT
+#ifdef USE_OHOS_DFX
 static void uv__get_process_name(char* processName, int bufferLength) {
   int fd = open("/proc/self/cmdline", O_RDONLY);
   if (fd != -1) {
     ssize_t ret = syscall(SYS_read, fd, processName, bufferLength - 1);
-    if (ret != -1) {
+    if (ret >= 0) {
       processName[ret] = '\0';
     }
     close(fd);
@@ -478,7 +481,7 @@ static int uv__get_signal_flag() {
   static int trigger = -1;
 
   if (trigger == -1) {
-    char processName[1024] = {0};
+    char processName[UV_PROCESS_NAME_LENGTH] = {0};
     uv__get_process_name(processName, sizeof(processName));
     char* c = strstr(processName, "com.atomicservice.");
     if (c == NULL || c > processName) {
@@ -491,13 +494,42 @@ static int uv__get_signal_flag() {
 }
 
 
-static int isAddressValid(void* address) {
-  char buffer[BUFFER_LENGTH] = {0};
-  struct iovec local_iov = {.iov_base = buffer, .iov_len = sizeof(buffer)};
-  struct iovec remote_iov = {.iov_base = address, .iov_len = sizeof(buffer)};
+static int uv__report_sysevent(uv_loop_t* loop, const char* processName) {
+  uv__loop_internal_fields_t* lfields_sysevent = uv__get_internal_fields(loop);
+  if (lfields_sysevent->sysevent_mask == 0) {
+    lfields_sysevent->sysevent_mask++;
+    HiSysEventParam param = {
+      .name = UV_SYSEVENT_PARAM,
+      .t = HISYSEVENT_STRING,
+      .v = { .s = processName },
+      .arraySize = 0,
+    };
+    HiSysEventParam params[] = { param };
+    /* Call OH_HiSysEvent_Write function to report unsafe events, please DO NOT modify any paramater. */
+    return OH_HiSysEvent_Write(UV_SYSEVENT_DOMAIN, UV_SYSEVENT_NAME, HISYSEVENT_SECURITY,
+                               params, sizeof(params) / sizeof(params[0]));
+  }
+  return 0;
+}
 
-  ssize_t bytes_read = process_vm_readv(getpid(), &local_iov, 1, &remote_iov, 1, 0);
-  if (bytes_read == -1) {
+
+static int uv__check_signal_handle(uv_loop_t* loop, uv_signal_t* handle) {
+  int flag = 0, ret = 0;
+  struct uv__queue* q;
+  uv__queue_foreach(q, &loop->handle_queue) {
+    uv_handle_t* h = uv__queue_data(q, uv_handle_t, handle_queue);
+    if (h->type == UV_SIGNAL && (uv_handle_t*)handle == h) {
+      flag = 1;
+      break;
+    }
+  }
+
+  if (flag != 1) {
+    char processName[UV_PROCESS_NAME_LENGTH] = {0};
+    uv__get_process_name(processName, sizeof(processName));
+    ret = uv__report_sysevent(loop, processName);
+    UV_LOGI("handle %{public}zu not in handle queue of loop %{public}zu, report result is %{public}d",
+            (size_t)handle % UV_ADDR_MOD, (size_t)loop % UV_ADDR_MOD, ret);
     return -1;
   }
   return 0;
@@ -517,7 +549,7 @@ static void uv__signal_event(uv_loop_t* loop,
   bytes = 0;
   end = 0;
 
-#ifdef USE_FFRT
+#ifdef USE_OHOS_DFX
   unsigned int trigger = uv__get_signal_flag();
 #endif
 
@@ -555,17 +587,15 @@ static void uv__signal_event(uv_loop_t* loop,
     end = (bytes / sizeof(uv__signal_msg_t)) * sizeof(uv__signal_msg_t);
 
     for (i = 0; i < end; i += sizeof(uv__signal_msg_t)) {
-#ifdef USE_FFRT
+#ifdef USE_OHOS_DFX
       if (trigger == 1) {
         break;
       }
 #endif
       msg = (uv__signal_msg_t*) (buf + i);
       handle = msg->handle;
-#ifdef USE_FFRT
-      int ret = isAddressValid((void*)handle);
-      if (ret == -1) {
-        UV_LOGE("signal handle %{public}zu is invalid", (size_t)handle % UV_ADDR_MOD);
+#ifdef USE_OHOS_DFX
+      if (uv__check_signal_handle(loop, handle) == -1) {
         continue;
       }
 #endif
