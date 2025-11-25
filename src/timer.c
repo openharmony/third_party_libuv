@@ -59,7 +59,7 @@ static int timer_less_than(const struct heap_node* ha,
 
 
 int uv_timer_init(uv_loop_t* loop, uv_timer_t* handle) {
-#if defined(USE_OHOS_DFX) && defined(__aarch64__)
+#if defined(USE_OHOS_DFX)
   uv__multi_thread_check_unify(loop, __func__);
 #endif
   uv__handle_init(loop, (uv_handle_t*)handle, UV_TIMER);
@@ -78,7 +78,7 @@ int uv_timer_start(uv_timer_t* handle,
                    uint64_t timeout,
                    uint64_t repeat) {
   uint64_t clamped_timeout;
-#if defined(USE_OHOS_DFX) && defined(__aarch64__)
+#if defined(USE_OHOS_DFX)
   uv__multi_thread_check_unify(handle->loop, __func__);
 #endif
 
@@ -118,7 +118,7 @@ int uv_timer_start(uv_timer_t* handle,
 
 
 int uv_timer_stop(uv_timer_t* handle) {
-#if defined(USE_OHOS_DFX) && defined(__aarch64__)
+#if defined(USE_OHOS_DFX)
   uv__multi_thread_check_unify(handle->loop, __func__);
 #endif
   if (!uv__is_active(handle))

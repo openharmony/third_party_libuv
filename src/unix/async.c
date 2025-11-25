@@ -51,7 +51,7 @@ static int uv__async_start(uv_loop_t* loop);
 int uv_async_init(uv_loop_t* loop, uv_async_t* handle, uv_async_cb async_cb) {
   int err;
 
-#if defined(USE_OHOS_DFX) && defined(__aarch64__)
+#if defined(USE_OHOS_DFX)
   uv__multi_thread_check_unify(loop, __func__);
 #endif
   err = uv__async_start(loop);

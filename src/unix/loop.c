@@ -69,8 +69,10 @@ int uv_loop_init(uv_loop_t* loop) {
   uv__queue_init(&loop->handle_queue);
 
   loop->active_handles = 0;
-#if defined(USE_OHOS_DFX) && defined(__aarch64__)
+#if defined(USE_OHOS_DFX)
   uv__init_thread_id(loop);
+  uv__loop_internal_fields_t* lfields_sysevent = uv__get_internal_fields(loop);
+  lfields_sysevent->sysevent_mask = 0;
 #endif
   uv__loop_internal_fields_t* lfields_flag = uv__get_internal_fields(loop);
   lfields_flag->register_flag = 0;
