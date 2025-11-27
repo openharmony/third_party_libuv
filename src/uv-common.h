@@ -460,8 +460,9 @@ struct uv__loop_internal_fields_s {
 #ifdef USE_FFRT
   struct uv__queue wq_sub[6];
 #endif
-#if defined(USE_OHOS_DFX) && defined(__aarch64__)
+#if defined(USE_OHOS_DFX)
   unsigned int thread_id;
+  unsigned int sysevent_mask;
 #endif
   int register_flag;
 };
@@ -469,14 +470,15 @@ struct uv__loop_internal_fields_s {
 uint64_t uv__get_addr_tag(void* addr);
 
 #ifdef USE_FFRT
-#define SPLIT_CHAR_FIRST ':'
-#define SPLIT_CHAR_SECOND '#'
 #define TASK_NAME_LENGTH 64
 void uv__work_submit_to_eventloop(uv_req_t* req, struct uv__work* w, int qos);
 int uv__copy_taskname(uv_req_t* req, const char* task_name);
 #endif
 
-#if defined(USE_OHOS_DFX) && defined(__aarch64__)
+#if defined(USE_OHOS_DFX)
+#define UV_SYSEVENT_DOMAIN "LIBUV"
+#define UV_SYSEVENT_NAME "UV_UNSAFE_EVENT"
+#define UV_SYSEVENT_PARAM "BUNDLE_NAME"
 int uv__is_multi_thread_open(void);
 void uv__init_thread_id(uv_loop_t* loop);
 void uv__set_thread_id(uv_loop_t* loop);

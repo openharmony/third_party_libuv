@@ -27,7 +27,8 @@
                 "hilog",
                 "hitrace",
                 "faultloggerd",
-                "init"
+                "init",
+                "hisysevent"
             ],
             "third_party": []
         },
