@@ -28,7 +28,7 @@
 #include <sys/uio.h>
 #include <sys/types.h>
 #include <sys/syscall.h>
-#include "hisysevent_c.h"
+#include <dlfcn.h>
 #define BUFFER_LENGTH 2
 #define UV_PROCESS_NAME_LENGTH 1024
 #endif
@@ -465,6 +465,29 @@ static int uv__signal_start(uv_signal_t* handle,
 
 
 #ifdef USE_OHOS_DFX
+#define MAX_LENGTH_OF_PARAM_NAME 49
+#define HISYSEVENT_STRING 12
+#define HISYSEVENT_SECURITY 3
+
+typedef enum {
+  EVENT_NOT_INIT,
+  EVENT_ENABLE,
+  EVENT_DISABLE
+}HiSysEventInitStatus;
+
+typedef struct UvHiSysEventParam {
+  char name[MAX_LENGTH_OF_PARAM_NAME];
+  int t;
+  char* v;
+  size_t arraySize;
+}UvHiSysEventParam;
+
+typedef int(*HiSysEventWriteFunc)(const char* func, int64_t line, const char* domain, const char* name,
+                                  int type, UvHiSysEventParam params[], size_t size);
+static HiSysEventWriteFunc uv__hisysevent_write = NULL;
+static HiSysEventInitStatus uv__hisysevent_status = EVENT_NOT_INIT;
+static uv_once_t hisysevent_init_guard = UV_ONCE_INIT;
+
 static void uv__get_process_name(char* processName, int bufferLength) {
   int fd = open("/proc/self/cmdline", O_RDONLY);
   if (fd != -1) {
@@ -494,20 +517,49 @@ static int uv__get_signal_flag() {
 }
 
 
+static void uv__find_hisysevent_func_once() {
+  uv__hisysevent_status = EVENT_DISABLE;
+  Dl_info info;
+
+  uv__hisysevent_write = (HiSysEventWriteFunc)(dlsym(RTLD_DEFAULT, "HiSysEvent_Write"));
+  if (uv__hisysevent_write == NULL) {
+    UV_LOGE("%{public}s", dlerror());
+    return;
+  }
+  if (dladdr(uv__hisysevent_write, &info) == 0) {
+    uv__hisysevent_write = NULL;
+    UV_LOGE("dladdr failed");
+    return;
+  }
+  const char* lib_path = info.dli_fname;
+  char* c = strstr(lib_path, "/system/lib64/");
+  if (c == NULL || c > lib_path) {
+    uv__hisysevent_write = NULL;
+    UV_LOGE("Not a system lib");
+    return;
+  }
+  uv__hisysevent_status = EVENT_ENABLE;
+}
+
+
 static int uv__report_sysevent(uv_loop_t* loop, const char* processName) {
+  uv_once(&hisysevent_init_guard, uv__find_hisysevent_func_once);
+  if (uv__hisysevent_status == EVENT_DISABLE) {
+    return -1;
+  }
   uv__loop_internal_fields_t* lfields_sysevent = uv__get_internal_fields(loop);
   if (lfields_sysevent->sysevent_mask == 0) {
     lfields_sysevent->sysevent_mask++;
-    HiSysEventParam param = {
+    UvHiSysEventParam param = {
       .name = UV_SYSEVENT_PARAM,
       .t = HISYSEVENT_STRING,
-      .v = { .s = processName },
+      .v = processName,
       .arraySize = 0,
     };
-    HiSysEventParam params[] = { param };
-    /* Call OH_HiSysEvent_Write function to report unsafe events, please DO NOT modify any paramater. */
-    return OH_HiSysEvent_Write(UV_SYSEVENT_DOMAIN, UV_SYSEVENT_NAME, HISYSEVENT_SECURITY,
-                               params, sizeof(params) / sizeof(params[0]));
+    UvHiSysEventParam params[] = { param };
+    /* Call HiSysEvent_Write function to report unsafe events, please DO NOT modify any paramater. */
+    return uv__hisysevent_write(__FUNCTION__, __LINE__, UV_SYSEVENT_DOMAIN, UV_SYSEVENT_NAME, HISYSEVENT_SECURITY,
+                                params, sizeof(params) / sizeof(params[0]));
   }
   return 0;
 }
@@ -528,7 +580,7 @@ static int uv__check_signal_handle(uv_loop_t* loop, uv_signal_t* handle) {
     char processName[UV_PROCESS_NAME_LENGTH] = {0};
     uv__get_process_name(processName, sizeof(processName));
     ret = uv__report_sysevent(loop, processName);
-    UV_LOGI("handle %{public}zu not in handle queue of loop %{public}zu, report result is %{public}d",
+    UV_LOGE("handle %{public}zu not in handle queue of loop %{public}zu, report result is %{public}d",
             (size_t)handle % UV_ADDR_MOD, (size_t)loop % UV_ADDR_MOD, ret);
     return -1;
   }
