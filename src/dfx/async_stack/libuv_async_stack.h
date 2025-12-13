@@ -17,8 +17,8 @@
 #include <stdint.h>
 #include "uv.h"
 typedef void(*UvSetStackIdFunc)(uint64_t stackId);
-typedef uint64_t(*UvCollectAsyncStackFunc)();
-uint64_t LibuvCollectAsyncStack(void);
+typedef uint64_t(*UvCollectAsyncStackFunc)(uint64_t type);
+uint64_t LibuvCollectAsyncStack(uint64_t type);
 void LibuvSetStackId(uint64_t stackId);
 UV_EXTERN void LibuvSetAsyncStackFunc(UvCollectAsyncStackFunc collectAsyncStackFunc, UvSetStackIdFunc setStackIdFunc);
 #endif /* LIBUV_DFX_ASYNC_STACK_H */

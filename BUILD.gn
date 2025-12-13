@@ -307,6 +307,7 @@ if (defined(ohos_lite)) {
           "hilog:libhilog",
           "hitrace:hitrace_meter",
           "init:libbegetutil",
+          "faultloggerd:libasync_stack",
         ]
       }
 

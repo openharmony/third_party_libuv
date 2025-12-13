@@ -532,7 +532,12 @@ static void uv__find_hisysevent_func_once() {
     return;
   }
   const char* lib_path = info.dli_fname;
-  char* c = strstr(lib_path, "/system/lib64/");
+  if (lib_path == NULL) {
+    uv__hisysevent_write = NULL;
+    UV_LOGE("lib path is NULL");
+    return;
+  }
+  char* c = strstr(lib_path, "/system/");
   if (c == NULL || c > lib_path) {
     uv__hisysevent_write = NULL;
     UV_LOGE("Not a system lib");

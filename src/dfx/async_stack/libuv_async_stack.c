@@ -27,10 +27,10 @@ void LibuvSetAsyncStackFunc(UvCollectAsyncStackFunc collectAsyncStackFunc, UvSet
     g_setStackIdFunc = setStackIdFunc;
 }
 
-uint64_t LibuvCollectAsyncStack(void)
+uint64_t LibuvCollectAsyncStack(uint64_t type)
 {
     if (g_collectAsyncStackFunc != NULL) {
-        return g_collectAsyncStackFunc();
+        return g_collectAsyncStackFunc(type);
     }
 
     return 0;
