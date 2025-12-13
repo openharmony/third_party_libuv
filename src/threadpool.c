@@ -37,6 +37,7 @@
 #include <stdio.h>
 #ifdef ASYNC_STACKTRACE
 #include "dfx/async_stack/libuv_async_stack.h"
+#include "async_stack.h"
 #endif
 
 #define MAX_THREADPOOL_SIZE 1024
@@ -756,7 +757,7 @@ int uv_queue_work(uv_loop_t* loop,
 
 #ifdef ASYNC_STACKTRACE
   /* The req->reserved[DFX_ASYNC_STACK] is used for DFX only. */
-  req->reserved[DFX_ASYNC_STACK] = (void*)LibuvCollectAsyncStack();
+  req->reserved[DFX_ASYNC_STACK] = (void*)LibuvCollectAsyncStack(ASYNC_TYPE_LIBUV_QUEUE);
 #endif
   uv__work_submit(loop,
 #ifdef USE_FFRT
@@ -791,7 +792,7 @@ int uv_queue_work_internal(uv_loop_t* loop,
 
 #ifdef ASYNC_STACKTRACE
   /* The req->reserved[DFX_ASYNC_STACK] is used for DFX only. */
-  req->reserved[DFX_ASYNC_STACK] = (void*)LibuvCollectAsyncStack();
+  req->reserved[DFX_ASYNC_STACK] = (void*)LibuvCollectAsyncStack(ASYNC_TYPE_LIBUV_QUEUE);
 #endif
   uv__work_submit(loop,
                   (uv_req_t*)req,
@@ -837,7 +838,7 @@ int uv_queue_work_with_qos(uv_loop_t* loop,
 
 #ifdef ASYNC_STACKTRACE
   /* The req->reserved[DFX_ASYNC_STACK] is used for DFX only. */
-  req->reserved[DFX_ASYNC_STACK] = (void*)LibuvCollectAsyncStack();
+  req->reserved[DFX_ASYNC_STACK] = (void*)LibuvCollectAsyncStack(ASYNC_TYPE_LIBUV_QUEUE);
 #endif
   uv__work_submit_with_qos(loop,
                   (uv_req_t*)req,
@@ -886,7 +887,7 @@ int uv_queue_work_with_qos_internal(uv_loop_t* loop,
 
 #ifdef ASYNC_STACKTRACE
   /* The req->reserved[DFX_ASYNC_STACK] is used for DFX only. */
-  req->reserved[DFX_ASYNC_STACK] = (void*)LibuvCollectAsyncStack();
+  req->reserved[DFX_ASYNC_STACK] = (void*)LibuvCollectAsyncStack(ASYNC_TYPE_LIBUV_QUEUE);
 #endif
   uv__work_submit_with_qos(loop,
                   (uv_req_t*)req,
@@ -934,7 +935,7 @@ int uv_queue_work_ordered(uv_loop_t* loop,
 
 #ifdef ASYNC_STACKTRACE
   /* The req->reserved[DFX_ASYNC_STACK] is used for DFX only. */
-  req->reserved[DFX_ASYNC_STACK] = (void*)LibuvCollectAsyncStack();
+  req->reserved[DFX_ASYNC_STACK] = (void*)LibuvCollectAsyncStack(ASYNC_TYPE_LIBUV_QUEUE);
 #endif
   uv__work_submit_ordered(loop,
                   (uv_req_t*)req,
