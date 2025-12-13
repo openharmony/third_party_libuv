@@ -27,6 +27,7 @@
 
 #ifdef ASYNC_STACKTRACE
 #include "dfx/async_stack/libuv_async_stack.h"
+#include "async_stack.h"
 #endif
 
 static struct heap *timer_heap(const uv_loop_t* loop) {
@@ -100,7 +101,7 @@ int uv_timer_start(uv_timer_t* handle,
 
 #ifdef ASYNC_STACKTRACE
   if (handle->u.reserved[DFX_ASYNC_STACK] == 0) {
-    handle->u.reserved[DFX_ASYNC_STACK] = (void*)LibuvCollectAsyncStack();
+    handle->u.reserved[DFX_ASYNC_STACK] = (void*)LibuvCollectAsyncStack(ASYNC_TYPE_LIBUV_TIMER);
   }
 #endif
 
