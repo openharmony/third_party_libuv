@@ -26,7 +26,6 @@
                 "ffrt",
                 "hilog",
                 "hitrace",
-                "faultloggerd",
                 "init"
             ],
             "third_party": []
