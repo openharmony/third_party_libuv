@@ -44,6 +44,11 @@
 #include "c/executor_task.h"
 #endif
 
+#ifdef ASYNC_STACKTRACE
+#include "uv-common.h"
+#include "dfx/async_stack/libuv_async_stack.h"
+#endif
+
 static void uv__async_send(uv_async_t* handle);
 static int uv__async_start(uv_loop_t* loop);
 
@@ -64,7 +69,9 @@ int uv_async_init(uv_loop_t* loop, uv_async_t* handle, uv_async_cb async_cb) {
 
   uv__queue_insert_tail(&loop->async_handles, &handle->queue);
   uv__handle_start(handle);
-
+#ifdef ASYNC_STACKTRACE
+  handle->u.reserved[DFX_ASYNC_STACK] = (void*)LibuvCollectAsyncStack(ASYNC_TYPE_LIBUV_SEND);
+#endif
   return 0;
 }
 
@@ -155,7 +162,9 @@ static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 
     if (h->async_cb == NULL)
       continue;
-
+#ifdef ASYNC_STACKTRACE
+    LibuvSetStackId((uint64_t)h->u.reserved[DFX_ASYNC_STACK]);
+#endif
     h->async_cb(h);
 #ifdef ENABLE_WORKER_PRIORITY
     uv_call_specify_task(loop);
