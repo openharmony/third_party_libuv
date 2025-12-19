@@ -465,6 +465,12 @@ struct uv__loop_internal_fields_s {
   unsigned int sysevent_mask;
 #endif
   int register_flag;
+#ifdef SUPPORT_INTERRUPT
+  uint32_t uv_params;
+  int32_t uv_interrupt_task_type;
+  int64_t last_check_stamp;
+  void* check_pending_higher_event;
+#endif
 };
 
 uint64_t uv__get_addr_tag(void* addr);
