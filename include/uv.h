@@ -1961,8 +1961,32 @@ union uv_any_req {
 #undef XX
 
 typedef void (*uv_io_cb)(void* work, int status);
-typedef void (*uv_post_task)(const char* task_name, uv_io_cb func, void* work, int status, int prio);
 typedef void (*uv_execute_specify_task)(uv_loop_t* loop);
+
+typedef struct uv_task_info_s {
+  char* name;
+  uv_io_cb func;
+  void* work;
+  int status;
+  int prio;
+  /* Location where uv events are inserted into the event loop queue */
+  int location;
+} uv_task_info_t;
+typedef int (*uv_pending_higher_event_checker)(int myPrio);
+typedef void (*uv_post_task)(const uv_task_info_t* task_info);
+
+#define UV_POST_TASK_TO_HEAD	(0x0)
+#define UV_POST_TASK_TO_TAIL	(0x1)
+#define UV_PARAMS_CAN_INTERRUPT_MASK	(0x1)
+#define UV_PARAMS_BE_INTERRUPTED_MASK	(0x2)
+#define UV_PRIORITY_IMMEDIATE 1
+typedef enum {
+    UV_INTERRUPT_UNKNOWN = -1,
+    UV_INTERRUPT_TIMER = 0,
+    UV_INTERRUPT_ASYNC,
+    UV_INTERRUPT_ASYNC_WORK,
+    UV_INTERRUPT_TASK_COUNT
+} uv_interrupt_task_t;
 
 struct uv_loop_data {
   void* event_handler;
@@ -1999,11 +2023,12 @@ struct uv_loop_s {
 UV_EXTERN void* uv_loop_get_data(const uv_loop_t*);
 UV_EXTERN void uv_loop_set_data(uv_loop_t*, void* data);
 
-UV_EXTERN int uv_register_task_to_event(struct uv_loop_s* loop, uv_post_task func, void* handler);
+UV_EXTERN int uv_register_task_to_event(struct uv_loop_s* loop, uv_post_task func, uv_pending_higher_event_checker checker);
 UV_EXTERN int uv_register_task_to_worker(struct uv_loop_s* loop, uv_execute_specify_task func);
 UV_EXTERN int uv_unregister_task_to_event(struct uv_loop_s* loop);
 UV_EXTERN int uv_check_data_valid(uv_loop_t* loop);
 UV_EXTERN void uv_call_specify_task(uv_loop_t* loop);
+UV_EXTERN int uv_has_pending_higher_events(uv_loop_t* loop, int prio, int current_task_type);
 
 /* String utilities needed internally for dealing with Windows. */
 size_t uv_utf16_length_as_wtf8(const uint16_t* utf16,
