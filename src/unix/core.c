@@ -22,6 +22,7 @@
 #include "uv_log.h"
 #include "internal.h"
 #include "strtok.h"
+#include "uv_trace.h"
 
 #include <stddef.h> /* NULL */
 #include <stdio.h> /* printf */
@@ -110,6 +111,35 @@ STATIC_ASSERT(sizeof(((uv_buf_t*) 0)->len) ==
 STATIC_ASSERT(offsetof(uv_buf_t, base) == offsetof(struct iovec, iov_base));
 STATIC_ASSERT(offsetof(uv_buf_t, len) == offsetof(struct iovec, iov_len));
 
+#if defined(SUPPORT_INTERRUPT) && defined(USE_OHOS_DFX)
+#define CHECK_INTERRUPT_INTERVAL_NS	4000000LL
+#define NS_PER_S					1000000000LL
+
+static const char* const uv__interrupt_task_names[] = {
+  "uv__run_continue_interrupt_timer",
+  "uv__run_continue_interrupt_async",
+  "uv__run_continue_interrupt_async_work"
+};
+
+static int uv__is_checker_valid(uv_loop_t* loop) {
+  uv__loop_internal_fields_t* lfields = uv__get_internal_fields(loop);
+  struct uv_loop_data* data = loop->data;
+  if (data == NULL || lfields->register_flag != UV_REGISTER_MAINTHREAD_FLAG) {
+    return -1;
+  }
+
+  if (data->post_task_func == NULL || lfields->check_pending_higher_event == NULL) {
+    UV_LOGE("check_pending_higher_event=%{public}p, post_task_func=%{public}p",
+      lfields->check_pending_higher_event, data->post_task_func);
+    return -1;
+  }
+
+  if (!(lfields->uv_params & UV_PARAMS_CAN_INTERRUPT_MASK)) {
+    return -2;
+  }
+  return 0;
+}
+#endif
 
 /* https://github.com/libuv/libuv/issues/1674 */
 int uv_clock_gettime(uv_clock_id clock_id, uv_timespec64_t* ts) {
@@ -426,6 +456,13 @@ int uv_loop_alive_taskpool(const uv_loop_t* loop, int initial_handles) {
 #ifdef USE_FFRT
 int is_uv_loop_good_magic(const uv_loop_t* loop);
 #endif
+
+#if defined(SUPPORT_INTERRUPT) && defined(USE_OHOS_DFX)
+static void uv__run_continue(void* loop, int mode) {
+  uv_run((uv_loop_t*)loop, (uv_run_mode)mode);
+}
+#endif
+
 int uv_run(uv_loop_t* loop, uv_run_mode mode) {
   int timeout;
   int r;
@@ -444,6 +481,17 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
   if (!r)
     uv__update_time(loop);
 
+#if defined(SUPPORT_INTERRUPT) && defined(USE_OHOS_DFX)
+  uv__loop_internal_fields_t* lfields = uv__get_internal_fields(loop);
+  if (uv__is_checker_valid(loop) != -1) {
+    lfields->uv_params &= ~UV_PARAMS_BE_INTERRUPTED_MASK;
+    if (mode == UV_RUN_NOWAIT) {
+      lfields->uv_params |= UV_PARAMS_CAN_INTERRUPT_MASK;
+    } else {
+      lfields->uv_params &= ~UV_PARAMS_CAN_INTERRUPT_MASK;
+    }
+  }
+#endif
   while (r != 0 && loop->stop_flag == 0) {
 #ifdef USE_FFRT
     if (!is_uv_loop_good_magic(loop)) {
@@ -453,6 +501,11 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
 
     uv__update_time(loop);
     uv__run_timers(loop);
+#if defined(SUPPORT_INTERRUPT) && defined(USE_OHOS_DFX)
+    if ((lfields->uv_params & UV_PARAMS_BE_INTERRUPTED_MASK) && !uv__is_checker_valid(loop)) {
+      goto interrupt;
+    }
+#endif
 
     can_sleep =
         uv__queue_empty(&loop->pending_queue) &&
@@ -497,8 +550,27 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
       uv__update_time(loop);
       uv__run_timers(loop);
     }
-
+#if defined(SUPPORT_INTERRUPT) && defined(USE_OHOS_DFX)
+interrupt:
     r = uv__loop_alive(loop);
+    if ((lfields->uv_params & UV_PARAMS_BE_INTERRUPTED_MASK) && !uv__is_checker_valid(loop) &&
+      lfields->uv_interrupt_task_type > UV_INTERRUPT_UNKNOWN &&
+      lfields->uv_interrupt_task_type < UV_INTERRUPT_TASK_COUNT) {
+      struct uv_loop_data* data = (struct uv_loop_data*)loop->data;
+      const uv_task_info_t task_info = {
+        .name = uv__interrupt_task_names[lfields->uv_interrupt_task_type],
+        .func = uv__run_continue,
+        .work = (void*)loop,
+        .status = (int)UV_RUN_NOWAIT,
+        .prio = uv_qos_default,
+        .location = UV_POST_TASK_TO_HEAD,
+	  };
+      lfields->uv_params &= ~UV_PARAMS_BE_INTERRUPTED_MASK;
+      data->post_task_func(&task_info);
+    }
+#else
+    r = uv__loop_alive(loop);
+#endif
     if (mode == UV_RUN_ONCE || mode == UV_RUN_NOWAIT)
       break;
   }
@@ -1940,7 +2012,8 @@ unsigned int uv_available_parallelism(void) {
 }
 
 
-int uv__register_callback_to_eventloop(struct uv_loop_s* loop, void* func, void* handler, int flag) {
+int uv__register_callback_to_eventloop(struct uv_loop_s* loop, void* func,
+  uv_pending_higher_event_checker checker, int flag) {
   if (loop == NULL) {
     return -1;
   }
@@ -1951,7 +2024,6 @@ int uv__register_callback_to_eventloop(struct uv_loop_s* loop, void* func, void*
   }
 
   (void)memset(data, 0, sizeof(struct uv_loop_data));
-  data->event_handler = handler;
   if (flag == UV_REGISTER_MAINTHREAD_FLAG) {
     data->post_task_func = (uv_post_task)func;
 #ifdef ENABLE_WORKER_PRIORITY
@@ -1963,12 +2035,18 @@ int uv__register_callback_to_eventloop(struct uv_loop_s* loop, void* func, void*
 
   uv__loop_internal_fields_t* lfields_flag = uv__get_internal_fields(loop);
   lfields_flag->register_flag = flag;
+#ifdef SUPPORT_INTERRUPT
+  lfields_flag->check_pending_higher_event = checker;
+  lfields_flag->uv_params = 0;
+  lfields_flag->uv_interrupt_task_type = -1;
+  lfields_flag->last_check_stamp = 0;
+#endif
   return 0;
 }
 
 
-int uv_register_task_to_event(struct uv_loop_s* loop, uv_post_task func, void* handler) {
-  return uv__register_callback_to_eventloop(loop, (void*)func, handler, UV_REGISTER_MAINTHREAD_FLAG);
+int uv_register_task_to_event(struct uv_loop_s* loop, uv_post_task func, uv_pending_higher_event_checker checker) {
+  return uv__register_callback_to_eventloop(loop, (void*)func, checker, UV_REGISTER_MAINTHREAD_FLAG);
 }
 
 
@@ -1989,6 +2067,12 @@ int uv_unregister_task_to_event(struct uv_loop_s* loop) {
   free(loop->data);
   loop->data = NULL;
   lfields_flag->register_flag = 0;
+#ifdef SUPPORT_INTERRUPT
+  lfields_flag->check_pending_higher_event = NULL;
+  lfields_flag->uv_params = 0;
+  lfields_flag->uv_interrupt_task_type = -1;
+  lfields_flag->last_check_stamp = 0;
+#endif
   return 0;
 }
 
@@ -2022,3 +2106,34 @@ void uv_call_specify_task(uv_loop_t* loop) {
   return;
 }
 
+int uv_has_pending_higher_events(uv_loop_t* loop, int prio, int uv_task_type) {
+#if defined(SUPPORT_INTERRUPT) && defined(USE_OHOS_DFX)
+  if (__builtin_expect(loop == NULL, 0)) {
+    return -1;
+  }
+  struct uv_loop_data* data = loop->data;
+  uv__loop_internal_fields_t* lfields = uv__get_internal_fields(loop);
+  if (lfields->uv_params & UV_PARAMS_BE_INTERRUPTED_MASK) {
+    return 0;
+  } else if (!(lfields->uv_params & UV_PARAMS_CAN_INTERRUPT_MASK) || !lfields->check_pending_higher_event ||
+    !data || !data->post_task_func) {
+    return -1;
+  }
+ 
+  struct timespec t = {};
+  clock_gettime(CLOCK_MONOTONIC, &t);
+  int64_t now = (int64_t)t.tv_sec * NS_PER_S + t.tv_nsec;
+  if (now < lfields->last_check_stamp + CHECK_INTERRUPT_INTERVAL_NS) {
+    return -1;
+  }
+  lfields->last_check_stamp = now;
+  lfields->uv_interrupt_task_type = uv_task_type;
+ 
+  uv_pending_higher_event_checker checker = (uv_pending_higher_event_checker)lfields->check_pending_higher_event;
+  if (!checker(prio)) {
+    lfields->uv_params |= UV_PARAMS_BE_INTERRUPTED_MASK;
+    return 0;
+  }
+#endif
+  return -1;
+}

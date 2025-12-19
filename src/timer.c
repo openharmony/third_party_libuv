@@ -21,6 +21,7 @@
 #include "uv.h"
 #include "uv-common.h"
 #include "heap-inl.h"
+#include "uv_trace.h"
 
 #include <assert.h>
 #include <limits.h>
@@ -201,6 +202,13 @@ void uv__run_timers(uv_loop_t* loop) {
     if (handle->timeout > loop->time)
       break;
 
+#if defined(SUPPORT_INTERRUPT) && defined(USE_OHOS_DFX)
+    if (!uv_has_pending_higher_events(loop, UV_PRIORITY_IMMEDIATE, UV_INTERRUPT_TIMER)) {
+      uv_start_trace(UV_TRACE_TAG, "uv__run_timers is interrupted");
+      uv_end_trace(UV_TRACE_TAG);
+      break;
+    }
+#endif
     uv_timer_stop(handle);
     uv_timer_again(handle);
 #ifdef ASYNC_STACKTRACE

@@ -196,6 +196,7 @@ if (defined(ohos_lite)) {
 
       if (use_ohos_dfx && is_ohos && !is_emulator) {
         defines += [ "USE_OHOS_DFX" ]
+        defines += [ "SUPPORT_INTERRUPT" ]
       }
     } else if (is_mingw || is_win) {
       cflags += [
