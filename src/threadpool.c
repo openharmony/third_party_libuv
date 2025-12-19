@@ -37,7 +37,6 @@
 #include <stdio.h>
 #ifdef ASYNC_STACKTRACE
 #include "dfx/async_stack/libuv_async_stack.h"
-#include "async_stack.h"
 #endif
 
 #define MAX_THREADPOOL_SIZE 1024
