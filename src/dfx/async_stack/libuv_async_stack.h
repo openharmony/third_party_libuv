@@ -16,6 +16,9 @@
 #define LIBUV_DFX_ASYNC_STACK_H
 #include <stdint.h>
 #include "uv.h"
+#define ASYNC_TYPE_LIBUV_TIMER (1ULL << 0)
+#define ASYNC_TYPE_LIBUV_QUEUE (1ULL << 1)
+#define ASYNC_TYPE_LIBUV_SEND  (1ULL << 2)
 typedef void(*UvSetStackIdFunc)(uint64_t stackId);
 typedef uint64_t(*UvCollectAsyncStackFunc)(uint64_t type);
 uint64_t LibuvCollectAsyncStack(uint64_t type);

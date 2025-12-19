@@ -28,7 +28,6 @@
 
 #ifdef ASYNC_STACKTRACE
 #include "dfx/async_stack/libuv_async_stack.h"
-#include "async_stack.h"
 #endif
 
 static struct heap *timer_heap(const uv_loop_t* loop) {
