@@ -76,6 +76,12 @@ int uv_loop_init(uv_loop_t* loop) {
 #endif
   uv__loop_internal_fields_t* lfields_flag = uv__get_internal_fields(loop);
   lfields_flag->register_flag = 0;
+#ifdef SUPPORT_INTERRUPT
+  lfields_flag->uv_params = 0;
+  lfields_flag->uv_interrupt_task_type = -1;
+  lfields_flag->last_check_stamp = INT64_MAX;
+  lfields_flag->check_pending_higher_event = NULL;
+#endif
   loop->active_reqs.count = 0;
   loop->nfds = 0;
   loop->watchers = NULL;

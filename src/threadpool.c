@@ -394,12 +394,16 @@ void uv__work_submit_to_eventloop(uv_req_t* req, struct uv__work* w, int qos) {
   if (uv_check_data_valid(loop) == UV_REGISTER_MAINTHREAD_FLAG) {
     int status = (w->work == uv__cancelled) ? UV_ECANCELED : 0;
     struct uv_loop_data* data = (struct uv_loop_data*)loop->data;
+    const uv_task_info_t task_info = {
+      .name = (req->type == UV_WORK)? (char*)req->reserved[DFX_TASK_NAME] : NULL,
+      .func = uv__task_done_wrapper,
+      .work = (void*)w,
+      .status = status,
+      .prio = qos,
+      .location = UV_POST_TASK_TO_TAIL,
+	};
     uv_mutex_unlock(&loop->wq_mutex);
-    if (req->type == UV_WORK) {
-      data->post_task_func((char*)req->reserved[DFX_TASK_NAME], uv__task_done_wrapper, (void*)w, status, qos);
-    } else {
-      data->post_task_func(NULL, uv__task_done_wrapper, (void*)w, status, qos);
-    }
+    data->post_task_func(&task_info);
   } else {
     uv__loop_internal_fields_t* lfields = uv__get_internal_fields(loop);
     uv__queue_insert_tail(&(lfields->wq_sub[qos]), &w->wq);
@@ -465,11 +469,15 @@ static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
   if (uv_check_data_valid(w->loop) == UV_REGISTER_MAINTHREAD_FLAG) {
     int status = (w->work == uv__cancelled) ? UV_ECANCELED : 0;
     struct uv_loop_data* data = (struct uv_loop_data*)w->loop->data;
-    if (req->type == UV_WORK) {
-      data->post_task_func((char*)req->reserved[DFX_TASK_NAME], uv__task_done_wrapper, (void*)w, status, qos);
-    } else {
-      data->post_task_func(NULL, uv__task_done_wrapper, (void*)w, status, qos);
-    }
+    const uv_task_info_t task_info = {
+      .name = (req->type == UV_WORK)? (char*)req->reserved[DFX_TASK_NAME] : NULL,
+      .func = uv__task_done_wrapper,
+      .work = (void*)w,
+      .status = status,
+      .prio = qos,
+      .location = UV_POST_TASK_TO_TAIL,
+	};
+    data->post_task_func(&task_info);
   } else {
     uv__queue_insert_tail(&(lfields->wq_sub[qos]), &w->wq);
     uv_async_send(&loop->wq_async);

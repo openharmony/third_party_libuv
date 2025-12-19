@@ -25,6 +25,7 @@
 #include "uv.h"
 #include "internal.h"
 #include "uv_log.h"
+#include "uv_trace.h"
 
 #include <errno.h>
 #include <stdatomic.h>
@@ -144,6 +145,15 @@ static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   while (!uv__queue_empty(&queue)) {
     q = uv__queue_head(&queue);
     h = uv__queue_data(q, uv_async_t, queue);
+#if defined(SUPPORT_INTERRUPT) && defined(USE_OHOS_DFX)
+    if (!uv_has_pending_higher_events(loop, UV_PRIORITY_IMMEDIATE, UV_INTERRUPT_ASYNC)) {
+        uv_start_trace(UV_TRACE_TAG, "uv__async_io is interrupted");
+		uv__async_send(h);
+        uv__queue_add(&loop->async_handles, &queue);
+        uv_end_trace(UV_TRACE_TAG);
+        break;
+    }
+#endif
 
     uv__queue_remove(q);
     uv__queue_insert_tail(&loop->async_handles, q);
@@ -155,14 +165,12 @@ static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 
     if (h->async_cb == NULL)
       continue;
-
     h->async_cb(h);
 #ifdef ENABLE_WORKER_PRIORITY
     uv_call_specify_task(loop);
 #endif
   }
 }
-
 
 static void uv__async_send(uv_async_t* handle) {
   const void* buf;
