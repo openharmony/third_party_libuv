@@ -38,7 +38,7 @@ uint64_t LibuvCollectAsyncStack(uint64_t type)
 
 void LibuvSetStackId(uint64_t stackId)
 {
-    if (g_collectAsyncStackFunc != NULL) {
+    if (g_setStackIdFunc != NULL) {
         return g_setStackIdFunc(stackId);
     }
 }
