@@ -2023,7 +2023,9 @@ struct uv_loop_s {
 UV_EXTERN void* uv_loop_get_data(const uv_loop_t*);
 UV_EXTERN void uv_loop_set_data(uv_loop_t*, void* data);
 
-UV_EXTERN int uv_register_task_to_event(struct uv_loop_s* loop, uv_post_task func, uv_pending_higher_event_checker checker);
+UV_EXTERN int uv_register_task_to_event(struct uv_loop_s* loop,
+                                        uv_post_task func,
+                                        uv_pending_higher_event_checker checker);
 UV_EXTERN int uv_register_task_to_worker(struct uv_loop_s* loop, uv_execute_specify_task func);
 UV_EXTERN int uv_unregister_task_to_event(struct uv_loop_s* loop);
 UV_EXTERN int uv_check_data_valid(uv_loop_t* loop);

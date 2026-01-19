@@ -177,7 +177,7 @@ static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 #endif
     h->async_cb(h);
 #ifdef ENABLE_WORKER_PRIORITY
-    uv_call_specify_task(loop);
+    uv_call_specify_task(h->loop);
 #endif
   }
 }
