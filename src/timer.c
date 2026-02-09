@@ -215,6 +215,9 @@ void uv__run_timers(uv_loop_t* loop) {
     LibuvSetStackId((uint64_t)handle->u.reserved[DFX_ASYNC_STACK]);
 #endif
     handle->timer_cb(handle);
+#ifdef ASYNC_STACKTRACE
+    LibuvSetStackId(0);
+#endif
 #ifdef ENABLE_WORKER_PRIORITY
     uv_call_specify_task(loop);
 #endif
