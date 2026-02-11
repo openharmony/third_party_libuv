@@ -573,6 +573,9 @@ static void uv__queue_work(struct uv__work* w) {
   LibuvSetStackId((uint64_t)req->reserved[DFX_ASYNC_STACK]);
 #endif
   req->work_cb(req);
+#ifdef ASYNC_STACKTRACE
+  LibuvSetStackId(0);
+#endif
 #ifdef USE_FFRT
   uv__work_submit_to_eventloop(req, w, qos);
 #endif
@@ -588,9 +591,6 @@ static void uv__queue_done(struct uv__work* w, int err) {
   }
 
   req = container_of(w, uv_work_t, work_req);
-#ifdef ASYNC_STACKTRACE
-  LibuvSetStackId((uint64_t)req->reserved[DFX_ASYNC_STACK]);
-#endif
   uv__req_unregister(req->loop, req);
 
   if (req->after_work_cb == NULL)
@@ -605,7 +605,13 @@ static void uv__queue_done(struct uv__work* w, int err) {
     req->reserved[FFRT_TASK_DEPENDENCE] = NULL;
   }
 #endif
+#ifdef ASYNC_STACKTRACE
+  LibuvSetStackId((uint64_t)req->reserved[DFX_ASYNC_STACK]);
+#endif
   req->after_work_cb(req, err);
+#ifdef ASYNC_STACKTRACE
+  LibuvSetStackId(0);
+#endif
 }
 
 
