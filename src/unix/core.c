@@ -2106,6 +2106,7 @@ void uv_call_specify_task(uv_loop_t* loop) {
   return;
 }
 
+
 int uv_has_pending_higher_events(uv_loop_t* loop, int prio, int uv_task_type) {
 #if defined(SUPPORT_INTERRUPT) && defined(USE_OHOS_DFX)
   if (__builtin_expect(loop == NULL, 0)) {
@@ -2136,4 +2137,25 @@ int uv_has_pending_higher_events(uv_loop_t* loop, int prio, int uv_task_type) {
   }
 #endif
   return -1;
+}
+
+
+int uv_register_scope_to_loop(uv_loop_t* loop, void* napi_env,
+                              uv_open_handle_scope open_func,
+                              uv_close_handle_scope close_func) {
+#ifdef USE_OHOS_DFX
+  if (loop == NULL) {
+    return -1;
+  }
+
+  uv__loop_internal_fields_t* lfields = uv__get_internal_fields(loop);
+  if (lfields == NULL) {
+    return -1;
+  }
+
+  lfields->scope_data.napi_env = napi_env;
+  lfields->scope_data.open_handle_func = open_func;
+  lfields->scope_data.close_handle_func = close_func;
+#endif
+  return 0;
 }
