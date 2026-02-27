@@ -448,6 +448,14 @@ struct uv__iou {
 };
 #endif  /* __linux__ */
 
+#ifdef USE_OHOS_DFX
+typedef struct uv__scope_s {
+  void* napi_env;
+  uv_open_handle_scope open_handle_func;
+  uv_close_handle_scope close_handle_func;
+}uv__scope_t;
+#endif
+
 struct uv__loop_internal_fields_s {
   unsigned int flags;
   uv__loop_metrics_t loop_metrics;
@@ -463,6 +471,7 @@ struct uv__loop_internal_fields_s {
 #if defined(USE_OHOS_DFX)
   unsigned int thread_id;
   unsigned int sysevent_mask;
+  uv__scope_t scope_data;
 #endif
   int register_flag;
 #ifdef SUPPORT_INTERRUPT
@@ -501,4 +510,17 @@ typedef enum {
   /* collect asynchronous task stack */
   DFX_ASYNC_STACK,
 } req_reversed;
+
+#ifdef USE_OHOS_DFX
+#define WITH_UV_SCOPE(loop, uv_callback, ...)                                           \
+  do {                                                                                  \
+    void* local_handle = NULL;                                                          \
+    uv__scope_t data = ((uv__loop_internal_fields_t*)loop->internal_fields)->scope_data;\
+    if (data.napi_env != NULL && data.open_handle_func != NULL)                         \
+      data.open_handle_func(data.napi_env, &local_handle);                              \
+    uv_callback(__VA_ARGS__);                                                           \
+    if (data.napi_env != NULL && data.close_handle_func != NULL)                        \
+      data.close_handle_func(data.napi_env, local_handle);                              \
+  } while (0)
+#endif
 #endif /* UV_COMMON_H_ */

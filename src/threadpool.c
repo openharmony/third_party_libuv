@@ -400,7 +400,7 @@ void uv__work_submit_to_eventloop(uv_req_t* req, struct uv__work* w, int qos) {
       .status = status,
       .prio = qos,
       .location = UV_POST_TASK_TO_TAIL,
-	};
+    };
     uv_mutex_unlock(&loop->wq_mutex);
     data->post_task_func(&task_info);
   } else {
@@ -608,7 +608,11 @@ static void uv__queue_done(struct uv__work* w, int err) {
 #ifdef ASYNC_STACKTRACE
   LibuvSetStackId((uint64_t)req->reserved[DFX_ASYNC_STACK]);
 #endif
+#ifdef USE_OHOS_DFX
+  WITH_UV_SCOPE(req->loop, req->after_work_cb, req, err);
+#else
   req->after_work_cb(req, err);
+#endif
 #ifdef ASYNC_STACKTRACE
   LibuvSetStackId(0);
 #endif

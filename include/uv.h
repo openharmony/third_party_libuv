@@ -1974,6 +1974,8 @@ typedef struct uv_task_info_s {
 } uv_task_info_t;
 typedef int (*uv_pending_higher_event_checker)(int myPrio);
 typedef void (*uv_post_task)(const uv_task_info_t* task_info);
+typedef void (*uv_open_handle_scope)(void* napi_env, void** local_handle);
+typedef void (*uv_close_handle_scope)(void* napi_env, void* local_handle);
 
 #define UV_POST_TASK_TO_HEAD	(0x0)
 #define UV_POST_TASK_TO_TAIL	(0x1)
@@ -2031,6 +2033,9 @@ UV_EXTERN int uv_unregister_task_to_event(struct uv_loop_s* loop);
 UV_EXTERN int uv_check_data_valid(uv_loop_t* loop);
 UV_EXTERN void uv_call_specify_task(uv_loop_t* loop);
 UV_EXTERN int uv_has_pending_higher_events(uv_loop_t* loop, int prio, int current_task_type);
+UV_EXTERN int uv_register_scope_to_loop(uv_loop_t* loop, void* napi_env,
+                                        uv_open_handle_scope open_func,
+                                        uv_close_handle_scope close_func);
 
 /* String utilities needed internally for dealing with Windows. */
 size_t uv_utf16_length_as_wtf8(const uint16_t* utf16,

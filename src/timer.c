@@ -214,7 +214,11 @@ void uv__run_timers(uv_loop_t* loop) {
 #ifdef ASYNC_STACKTRACE
     LibuvSetStackId((uint64_t)handle->u.reserved[DFX_ASYNC_STACK]);
 #endif
+#ifdef USE_OHOS_DFX
+    WITH_UV_SCOPE(loop, handle->timer_cb, handle);
+#else
     handle->timer_cb(handle);
+#endif
 #ifdef ASYNC_STACKTRACE
     LibuvSetStackId(0);
 #endif

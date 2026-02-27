@@ -175,7 +175,11 @@ static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 #ifdef ASYNC_STACKTRACE
     LibuvSetStackId((uint64_t)h->u.reserved[DFX_ASYNC_STACK]);
 #endif
+#ifdef USE_OHOS_DFX
+    WITH_UV_SCOPE(loop, h->async_cb, h);
+#else
     h->async_cb(h);
+#endif
 #ifdef ASYNC_STACKTRACE
     LibuvSetStackId(0);
 #endif
