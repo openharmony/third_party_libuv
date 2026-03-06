@@ -176,6 +176,9 @@ static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
     LibuvSetStackId((uint64_t)h->u.reserved[DFX_ASYNC_STACK]);
 #endif
     h->async_cb(h);
+#ifdef ASYNC_STACKTRACE
+    LibuvSetStackId(0);
+#endif
 #ifdef ENABLE_WORKER_PRIORITY
     uv_call_specify_task(h->loop);
 #endif
