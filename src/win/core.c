@@ -775,3 +775,12 @@ int uv__getsockpeername(const uv_handle_t* handle,
 
   return 0;
 }
+
+int uv_register_scope_to_loop(uv_loop_t* loop, void* napi_env,
+                              uv_open_handle_scope open_func,
+                              uv_close_handle_scope close_func) {
+  if (loop == NULL) {
+    return -1;
+  }
+  return 0;
+}
