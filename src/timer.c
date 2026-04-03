@@ -231,4 +231,7 @@ void uv__run_timers(uv_loop_t* loop) {
 
 void uv__timer_close(uv_timer_t* handle) {
   uv_timer_stop(handle);
+#ifdef ASYNC_STACKTRACE
+  LibuvReleaseAsyncCtx((uint64_t)handle->u.reserved[DFX_ASYNC_STACK]);
+#endif
 }

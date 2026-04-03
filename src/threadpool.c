@@ -593,8 +593,12 @@ static void uv__queue_done(struct uv__work* w, int err) {
   req = container_of(w, uv_work_t, work_req);
   uv__req_unregister(req->loop, req);
 
-  if (req->after_work_cb == NULL)
+  if (req->after_work_cb == NULL) {
+#ifdef ASYNC_STACKTRACE
+    LibuvReleaseAsyncCtx((uint64_t)req->reserved[DFX_ASYNC_STACK]);
+#endif
     return;
+  }
 #ifdef USE_FFRT
   if (req->reserved[DFX_TASK_NAME] != NULL) {
     free((char*)req->reserved[DFX_TASK_NAME]);
@@ -606,7 +610,8 @@ static void uv__queue_done(struct uv__work* w, int err) {
   }
 #endif
 #ifdef ASYNC_STACKTRACE
-  LibuvSetStackId((uint64_t)req->reserved[DFX_ASYNC_STACK]);
+  uint64_t stackId = (uint64_t)req->reserved[DFX_ASYNC_STACK];
+  LibuvSetStackId(stackId);
 #endif
 #ifdef USE_OHOS_DFX
   WITH_UV_SCOPE(req->loop, req->after_work_cb, req, err);
@@ -615,6 +620,7 @@ static void uv__queue_done(struct uv__work* w, int err) {
 #endif
 #ifdef ASYNC_STACKTRACE
   LibuvSetStackId(0);
+  LibuvReleaseAsyncCtx(stackId);
 #endif
 }
 
