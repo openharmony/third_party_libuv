@@ -109,6 +109,9 @@ void uv__async_close(uv_async_t* handle) {
   atomic_exchange((_Atomic int*) &handle->pending, 0);
   uv__queue_remove(&handle->queue);
   uv__handle_stop(handle);
+#ifdef ASYNC_STACKTRACE
+  LibuvReleaseAsyncCtx((uint64_t)handle->u.reserved[DFX_ASYNC_STACK]);
+#endif
 }
 
 
