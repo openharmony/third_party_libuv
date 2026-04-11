@@ -65,6 +65,7 @@ static struct uv__queue slow_io_pending_wq;
 
 
 #ifdef USE_FFRT
+static void init_once(void);
 static void init_closed_uv_loop_rwlock_once(void) {
   uv_rwlock_init(&g_closed_uv_loop_rwlock);
 }
@@ -128,6 +129,7 @@ static void worker(void* arg) {
   struct uv__queue* q;
   int is_slow_work;
 
+  uv_thread_setname("libuv-worker");
   uv_sem_post((uv_sem_t*) arg);
   arg = NULL;
 
@@ -189,6 +191,7 @@ static void worker(void* arg) {
 
     w = uv__queue_data(q, struct uv__work, wq);
     w->work(w);
+  
     uv_mutex_lock(&w->loop->wq_mutex);
     w->work = NULL;  /* Signal uv_cancel() that the work req is done
                         executing. */
@@ -263,11 +266,21 @@ void uv__threadpool_cleanup(void) {
 static void init_threads(void) {
   uv_thread_options_t config;
   unsigned int i;
+  size_t buflen;
+  char buf[16];
   const char* val;
+  int err;
+
   uv_sem_t sem;
 
   nthreads = ARRAY_SIZE(default_threads);
-  val = getenv("UV_THREADPOOL_SIZE");
+
+  buflen = ARRAY_SIZE(buf);
+  err = uv_os_getenv("UV_THREADPOOL_SIZE", buf, &buflen);
+  val = NULL;
+  if (err == 0)
+    val = buf;
+
   if (val != NULL)
     nthreads = atoi(val);
   if (nthreads == 0)
@@ -419,6 +432,8 @@ void uv__work_submit_to_eventloop(uv_req_t* req, struct uv__work* w, int qos) {
  */
 static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
   int cancelled;
+
+  uv_once(&once, init_once);
 
 #ifdef USE_FFRT
   rdlock_closed_uv_loop_rwlock();
@@ -591,7 +606,7 @@ static void uv__queue_done(struct uv__work* w, int err) {
   }
 
   req = container_of(w, uv_work_t, work_req);
-  uv__req_unregister(req->loop, req);
+  uv__req_unregister(req->loop);
 
   if (req->after_work_cb == NULL)
     return;

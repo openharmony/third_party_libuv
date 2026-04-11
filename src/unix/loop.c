@@ -38,7 +38,7 @@ int uv_loop_init(uv_loop_t* loop) {
   memset(loop, 0, sizeof(*loop));
   loop->data = saved_data;
 
-  lfields = (uv__loop_internal_fields_t*) uv__calloc(1, sizeof(*lfields));
+  lfields = uv__calloc(1, sizeof(*lfields));
   if (lfields == NULL)
     return UV_ENOMEM;
   loop->internal_fields = lfields;
@@ -111,7 +111,7 @@ int uv_loop_init(uv_loop_t* loop) {
   uv__signal_global_once_init();
   err = uv__process_init(loop);
   if (err)
-    goto fail_signal_init;
+    goto fail_process_init;
   uv__queue_init(&loop->process_handles);
 
   err = uv_rwlock_init(&loop->cloexec_lock);
@@ -141,10 +141,18 @@ fail_mutex_init:
   uv_rwlock_destroy(&loop->cloexec_lock);
 
 fail_rwlock_init:
+fail_process_init:
   uv__signal_loop_cleanup(loop);
-
-fail_signal_init:
   uv__platform_loop_delete(loop);
+
+  if (loop->backend_fd != -1) {
+#ifdef USE_OHOS_DFX
+    fdsan_close_with_tag(loop->backend_fd, uv__get_addr_tag((void *)&loop->backend_fd));
+#else
+    uv__close(loop->backend_fd);
+#endif
+    loop->backend_fd = -1;
+  }
 
 fail_platform_init:
   uv_mutex_destroy(&lfields->loop_metrics.lock);
@@ -256,6 +264,14 @@ int uv__loop_configure(uv_loop_t* loop, uv_loop_option option, va_list ap) {
     lfields->flags |= UV_METRICS_IDLE_TIME;
     return 0;
   }
+
+#if defined(__linux__)
+  if (option == UV_LOOP_USE_IO_URING_SQPOLL) {
+    loop->flags |= UV_LOOP_ENABLE_IO_URING_SQPOLL;
+    return 0;
+  }
+#endif
+
 
   if (option != UV_LOOP_BLOCK_SIGNAL)
     return UV_ENOSYS;

@@ -87,11 +87,9 @@ int uv__getaddrinfo_translate_error(int sys_err) {
   case EAI_SYSTEM: return UV__ERR(errno);
 #endif
   }
-  assert(0 && "unknown EAI_* error code");
+  assert(!"unknown EAI_* error code");
   abort();
-#ifndef __SUNPRO_C
   return 0;  /* Pacify compiler. */
-#endif
 }
 
 
@@ -118,7 +116,7 @@ static void uv__getaddrinfo_done(struct uv__work* w, int status) {
   uv_getaddrinfo_t* req;
 
   req = container_of(w, uv_getaddrinfo_t, work_req);
-  uv__req_unregister(req->loop, req);
+  uv__req_unregister(req->loop);
 
   /* See initialization in uv_getaddrinfo(). */
   if (req->hints)
