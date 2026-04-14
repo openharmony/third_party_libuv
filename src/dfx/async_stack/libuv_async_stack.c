@@ -20,11 +20,16 @@
 #include <string.h>
 static UvCollectAsyncStackFunc g_collectAsyncStackFunc = NULL;
 static UvSetStackIdFunc g_setStackIdFunc = NULL;
-
+static UvReleaseAsyncContextFunc g_releaseCtxFunc = NULL;
 void LibuvSetAsyncStackFunc(UvCollectAsyncStackFunc collectAsyncStackFunc, UvSetStackIdFunc setStackIdFunc)
 {
     g_collectAsyncStackFunc = collectAsyncStackFunc;
     g_setStackIdFunc = setStackIdFunc;
+}
+
+void LibuvSetReleaseAsyncContextFunc(UvReleaseAsyncContextFunc releaseCtxFunc)
+{
+    g_releaseCtxFunc = releaseCtxFunc;
 }
 
 uint64_t LibuvCollectAsyncStack(uint64_t type)
@@ -40,5 +45,12 @@ void LibuvSetStackId(uint64_t stackId)
 {
     if (g_setStackIdFunc != NULL) {
         return g_setStackIdFunc(stackId);
+    }
+}
+
+void LibuvReleaseAsyncCtx(uint64_t stackId)
+{
+    if (g_releaseCtxFunc != NULL) {
+        return g_releaseCtxFunc(stackId);
     }
 }
