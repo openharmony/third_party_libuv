@@ -44,8 +44,8 @@ static int timer_less_than(const struct heap_node* ha,
   const uv_timer_t* a;
   const uv_timer_t* b;
 
-  a = container_of(ha, uv_timer_t, heap_node);
-  b = container_of(hb, uv_timer_t, heap_node);
+  a = container_of(ha, uv_timer_t, node.heap);
+  b = container_of(hb, uv_timer_t, node.heap);
 
   if (a->timeout < b->timeout)
     return 1;
@@ -67,6 +67,7 @@ int uv_timer_init(uv_loop_t* loop, uv_timer_t* handle) {
   handle->timer_cb = NULL;
   handle->timeout = 0;
   handle->repeat = 0;
+  uv__queue_init(&handle->node.queue);
 #ifdef ASYNC_STACKTRACE
   handle->u.reserved[DFX_ASYNC_STACK] = 0;
 #endif
@@ -86,8 +87,7 @@ int uv_timer_start(uv_timer_t* handle,
   if (uv__is_closing(handle) || cb == NULL)
     return UV_EINVAL;
 
-  if (uv__is_active(handle))
-    uv_timer_stop(handle);
+  uv_timer_stop(handle);
 
   clamped_timeout = handle->loop->time + timeout;
   if (clamped_timeout < timeout)
@@ -106,7 +106,7 @@ int uv_timer_start(uv_timer_t* handle,
 #endif
 
   heap_insert(timer_heap(handle->loop),
-              (struct heap_node*) &handle->heap_node,
+              (struct heap_node*) &handle->node.heap,
               timer_less_than);
   uv__handle_start(handle);
 #ifdef __linux__
@@ -122,14 +122,16 @@ int uv_timer_stop(uv_timer_t* handle) {
 #if defined(USE_OHOS_DFX)
   uv__multi_thread_check_unify(handle->loop, __func__);
 #endif
-  if (!uv__is_active(handle))
-    return 0;
+  if (uv__is_active(handle)) {
+    heap_remove(timer_heap(handle->loop),
+                (struct heap_node*) &handle->node.heap,
+                timer_less_than);
+    uv__handle_stop(handle);
+  } else {
+    uv__queue_remove(&handle->node.queue);
+  }
 
-  heap_remove(timer_heap(handle->loop),
-              (struct heap_node*) &handle->heap_node,
-              timer_less_than);
-  uv__handle_stop(handle);
-
+  uv__queue_init(&handle->node.queue);
   return 0;
 }
 
@@ -174,7 +176,7 @@ int uv__next_timeout(const uv_loop_t* loop) {
   if (heap_node == NULL)
     return -1; /* block indefinitely */
 
-  handle = container_of(heap_node, uv_timer_t, heap_node);
+  handle = container_of(heap_node, uv_timer_t, node.heap);
   if (handle->timeout <= loop->time)
     return 0;
 
@@ -189,6 +191,10 @@ int uv__next_timeout(const uv_loop_t* loop) {
 void uv__run_timers(uv_loop_t* loop) {
   struct heap_node* heap_node;
   uv_timer_t* handle;
+  struct uv__queue* queue_node;
+  struct uv__queue ready_queue;
+
+  uv__queue_init(&ready_queue);
 
 #ifdef ENABLE_WORKER_PRIORITY
   uv_call_specify_task(loop);
@@ -198,10 +204,9 @@ void uv__run_timers(uv_loop_t* loop) {
     if (heap_node == NULL)
       break;
 
-    handle = container_of(heap_node, uv_timer_t, heap_node);
+    handle = container_of(heap_node, uv_timer_t, node.heap);
     if (handle->timeout > loop->time)
       break;
-
 #if defined(SUPPORT_INTERRUPT) && defined(USE_OHOS_DFX)
     if (!uv_has_pending_higher_events(loop, UV_PRIORITY_IMMEDIATE, UV_INTERRUPT_TIMER)) {
       uv_start_trace(UV_TRACE_TAG, "uv__run_timers is interrupted");
@@ -210,6 +215,15 @@ void uv__run_timers(uv_loop_t* loop) {
     }
 #endif
     uv_timer_stop(handle);
+    uv__queue_insert_tail(&ready_queue, &handle->node.queue);
+  }
+
+  while (!uv__queue_empty(&ready_queue)) {
+    queue_node = uv__queue_head(&ready_queue);
+    uv__queue_remove(queue_node);
+    uv__queue_init(queue_node);
+    handle = container_of(queue_node, uv_timer_t, node.queue);
+
     uv_timer_again(handle);
 #ifdef ASYNC_STACKTRACE
     LibuvSetStackId((uint64_t)handle->u.reserved[DFX_ASYNC_STACK]);
