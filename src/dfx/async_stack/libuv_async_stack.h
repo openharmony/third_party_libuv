@@ -21,7 +21,10 @@
 #define ASYNC_TYPE_LIBUV_SEND  (1ULL << 2)
 typedef void(*UvSetStackIdFunc)(uint64_t stackId);
 typedef uint64_t(*UvCollectAsyncStackFunc)(uint64_t type);
+typedef void(*UvReleaseAsyncContextFunc)(uint64_t stackId);
 uint64_t LibuvCollectAsyncStack(uint64_t type);
 void LibuvSetStackId(uint64_t stackId);
+void LibuvReleaseAsyncCtx(uint64_t stackId);
 UV_EXTERN void LibuvSetAsyncStackFunc(UvCollectAsyncStackFunc collectAsyncStackFunc, UvSetStackIdFunc setStackIdFunc);
+UV_EXTERN void LibuvSetReleaseAsyncContextFunc(UvReleaseAsyncContextFunc releaseCtxFunc);
 #endif /* LIBUV_DFX_ASYNC_STACK_H */
