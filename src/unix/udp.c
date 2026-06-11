@@ -183,7 +183,11 @@ void uv__udp_io(uv_loop_t* loop, uv__io_t* w, unsigned int revents) {
 
   /* Just Linux support for now. */
 #if defined(__linux__)
-  if (revents & POLLERR)
+  /* Guard against the case where the POLLIN callback above (e.g. via
+ 	 * uv_udp_recv_stop + uv_close) already cleared recv_cb in the same
+ 	 * revents iteration.  uv__udp_recvmsg asserts recv_cb != NULL, so
+ 	 * calling it with a NULL recv_cb would be wrong regardless of POLLERR. */
+ 	if ((revents & POLLERR) && uv__is_active(handle) && handle->recv_cb != NULL)
     uv__udp_recvmsg(handle, MSG_ERRQUEUE);
 #endif
 
@@ -290,7 +294,9 @@ static void uv__udp_recvmsg(uv_udp_t* handle, int flag) {
 #endif
 
   assert(handle->recv_cb != NULL);
-  assert(handle->alloc_cb != NULL);
+  // assert(handle->alloc_cb != NULL);
+  if (handle->alloc_cb == NULL)
+    return;
 
   /* Prevent loop starvation when the data comes in as fast as (or faster than)
    * we can read it. XXX Need to rearm fd if we switch to edge-triggered I/O.
