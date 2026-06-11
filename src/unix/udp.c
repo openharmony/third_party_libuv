@@ -295,8 +295,11 @@ static void uv__udp_recvmsg(uv_udp_t* handle, int flag) {
 
   assert(handle->recv_cb != NULL);
   assert(handle->alloc_cb != NULL);
+
+#if defined(IS_OHOS)
   if (handle->alloc_cb == NULL)
     return;
+#endif
 
   /* Prevent loop starvation when the data comes in as fast as (or faster than)
    * we can read it. XXX Need to rearm fd if we switch to edge-triggered I/O.
