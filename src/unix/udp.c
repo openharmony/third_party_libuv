@@ -294,6 +294,7 @@ static void uv__udp_recvmsg(uv_udp_t* handle, int flag) {
 #endif
 
   assert(handle->recv_cb != NULL);
+  assert(handle->alloc_cb != NULL);
   if (handle->alloc_cb == NULL)
     return;
 
