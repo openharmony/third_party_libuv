@@ -194,6 +194,10 @@ if (defined(ohos_lite)) {
             [ "-Wno-frame-address" ]  # for use of __builtin_return_address
       }
 
+      if (is_ohos) {
+        defines += [ "IS_OHOS" ]
+      }
+
       if (use_ohos_dfx && is_ohos && !is_emulator) {
         defines += [ "USE_OHOS_DFX" ]
         defines += [ "SUPPORT_INTERRUPT" ]
