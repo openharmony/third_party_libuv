@@ -17,7 +17,8 @@
         ],
         "features": ["libuv_use_ffrt"],
         "adapted_system_type": [
-            "standard"
+            "standard",
+            "small"
         ],
         "rom": "163KB",
         "ram": "0",

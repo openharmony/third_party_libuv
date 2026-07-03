@@ -61,7 +61,6 @@ if (defined(ohos_lite)) {
       "-Wno-incompatible-pointer-types",
       "-D_GNU_SOURCE",
       "-D_POSIX_C_SOURCE=200112",
-      "-U__linux__",
       "-D__GNU__",
       "-fPIC",
     ]
@@ -88,14 +87,10 @@ if (defined(ohos_lite)) {
       "src/unix/fs.c",
       "src/unix/getaddrinfo.c",
       "src/unix/getnameinfo.c",
-      "src/unix/linux.c",
       "src/unix/loop-watcher.c",
       "src/unix/loop.c",
-      "src/unix/no-fsevents.c",
       "src/unix/pipe.c",
       "src/unix/poll.c",
-      "src/unix/posix-hrtime.c",
-      "src/unix/posix-poll.c",
       "src/unix/process.c",
       "src/unix/random-devurandom.c",
       "src/unix/signal.c",
@@ -104,7 +99,20 @@ if (defined(ohos_lite)) {
       "src/unix/thread.c",
       "src/unix/tty.c",
       "src/unix/udp.c",
+
+      # linux specific (replaces posix-hrtime, posix-poll, no-fsevents)
+      "src/unix/linux.c",
+      "src/unix/procfs-exepath.c",
+      "src/unix/proctitle.c",
+      "src/unix/random-getrandom.c",
+      "src/unix/random-sysctl-linux.c",
+
+      # log and trace
+      "src/unix/log_unix.c",
+      "src/unix/trace_unix.c",
     ]
+
+    defines = [ "OHOS_LITE" ]
   }
 
   static_library("uv_static") {

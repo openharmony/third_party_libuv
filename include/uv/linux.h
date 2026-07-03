@@ -22,10 +22,23 @@
 #ifndef UV_LINUX_H
 #define UV_LINUX_H
 
+#ifdef OHOS_LITE
 #define UV_PLATFORM_LOOP_FIELDS                                               \
   uv__io_t inotify_read_watcher;                                              \
   void* inotify_watchers;                                                     \
   int inotify_fd;                                                             \
+  struct pollfd* poll_fds;                                                    \
+  size_t poll_fds_used;                                                       \
+  size_t poll_fds_size;                                                       \
+  unsigned char poll_fds_iterating;                                                             \
+
+#else
+#define UV_PLATFORM_LOOP_FIELDS                                               \
+  uv__io_t inotify_read_watcher;                                              \
+  void* inotify_watchers;                                                     \
+  int inotify_fd;                                                             \
+
+#endif
 
 #define UV_PLATFORM_FS_EVENT_FIELDS                                           \
   struct uv__queue watchers;                                                  \
