@@ -1461,8 +1461,10 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     /* File descriptor that's been watched before, update event mask. */
     if (uv__epoll_ctl(epollfd, EPOLL_CTL_MOD, fd, &e)) {
 #ifdef USE_OHOS_DFX
-      UV_ERRNO_ABORT("errno is %d, fd is %d, backend_fd is %d(%s:%s:%d)",
-        errno, fd, epollfd, __FILE__, __func__, __LINE__);
+    const char* errname = errno == EBADF ? "EBADF" : errno == EINVAL ? "EINVAL" : "";
+    const char* remarks = (errno == EBADF || errno == EINVAL) ? ", fd may be already closed or reused" : "";
+      UV_ERRNO_ABORT("fd epoll_ctl error: %s(%d)%s, loop addr is %p, watcher fd is %d, epollfd is %d(%s:%s:%d)",
+        errname, errno, remarks, loop, fd, epollfd, __FILE__, __func__, __LINE__);
 #else
       abort();
 #endif
