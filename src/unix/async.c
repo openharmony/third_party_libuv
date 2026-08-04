@@ -214,8 +214,10 @@ void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
       continue;
 
 #ifdef USE_OHOS_DFX
-    UV_ERRNO_ABORT("errno is %d, loop addr is %zu, fd is %d (%s:%s:%d)",
-      errno, (size_t)loop, w->fd, __FILE__, __func__, __LINE__);
+    const char* errname = errno == EBADF ? "EBADF" : errno == EINVAL ? "EINVAL" : "";
+    const char* remarks = (errno == EBADF || errno == EINVAL) ? ", fd may be already closed or reused" : "";
+    UV_ERRNO_ABORT("fd read error: %s(%d)%s, loop addr is %p, async handle fd is %d (%s:%s:%d)",
+      errname, errno, remarks, loop, w->fd, __FILE__, __func__, __LINE__);
 #else
     abort();
 #endif
@@ -313,8 +315,10 @@ static void uv__async_send(uv_loop_t* loop) {
       return;
 
 #ifdef USE_OHOS_DFX
-    UV_ERRNO_ABORT("errno is %d, loop addr is %zu, fd is %d (%s:%s:%d)",
-      errno, (size_t)loop, fd, __FILE__, __func__, __LINE__);
+    const char* errname = errno == EBADF ? "EBADF" : errno == EINVAL ? "EINVAL" : "";
+    const char* remarks = (errno == EBADF || errno == EINVAL) ? ", fd may be already closed or reused" : "";
+    UV_ERRNO_ABORT("fd write error: %s(%d)%s, loop addr is %p, async handle fd is %d (%s:%s:%d)",
+      errname, errno, remarks, loop, fd, __FILE__, __func__, __LINE__);
 #else
     abort();
 #endif
