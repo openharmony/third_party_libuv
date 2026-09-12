@@ -480,7 +480,8 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
   int r;
   int can_sleep;
 #if defined(USE_OHOS_DFX)
-  uv__set_thread_id(loop);
+  uv__loop_internal_fields_t* lfields_thread_check = uv__get_internal_fields(loop);
+  lfields_thread_check->thread_id = (unsigned int)gettid();
 #endif
 
 #ifdef USE_FFRT
