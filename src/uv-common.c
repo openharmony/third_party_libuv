@@ -42,7 +42,9 @@
 #include "parameter.h"
 #include <unistd.h>
 #include <sys/types.h>
-static unsigned int g_multi_thread_check = 0;
+#include <info/fatal_message.h>
+#define __NR_rt_tgsigqueueinfo 240
+static enum uv_error_level g_error_report_level = UV_ERROR_LEVEL_WARN_ALWAYS;
 #endif
 
 #ifdef USE_FFRT
@@ -1118,67 +1120,114 @@ int uv__copy_taskname(uv_req_t* req, const char* task_name) {
 
 
 #if defined(USE_OHOS_DFX)
-static uv_once_t thread_check_guard = UV_ONCE_INIT;
+void uv__save_debug_message(const char* msg)
+{
+  if(msg == NULL) {
+    UV_LOGW("debug msg is NULL");
+    return;
+  }
+
+  const int NUMBER_ONE_THOUSAND = 1000; // 1000: second to millisecond convert ratio
+  const int NUMBER_ONE_MILLION = 1000000; // 1000000: nanosecond to millisecond convert ratio
+  struct timespec ts;
+  (void)clock_gettime(CLOCK_REALTIME, &ts);
+
+  debug_msg_t debug_message = {0, NULL};
+  debug_message.timestamp = ((uint64_t)ts.tv_sec *  NUMBER_ONE_THOUSAND) + 
+    (((uint64_t)ts.tv_sec) / NUMBER_ONE_MILLION);
+  debug_message.msg = msg;
+
+  const int signo = 42; // Custom stack capture signal and leak reuse
+  const int si_code = 1; // When si_signo = 42, use si_code = 1 mark the event as fdsan
+  siginfo_t info;
+  info.si_signo = signo;
+  info.si_code = si_code;
+  info.si_value.sival_ptr = &debug_message;
+  if (syscall(__NR_rt_tgsigqueueinfo, getpid(), gettid(), signo, &info) == -1) {
+    UV_LOGE("send failed errno=%{public}d", errno);
+  }
+}
+
+
+extern const char* GetTrace(size_t skipFrameNum, size_t maxFrameNums);
+void uv_print_call_stack(const char* msg) {
+  if (msg == NULL) {
+    UV_LOGW("debug msg is NULL");
+    return;
+  }
+  char* stack = GetTrace(0, 256);
+  UV_LOGI("msg:%{public}s, Backtrace:\n%{public}s", msg, stack);
+}
+
+
+void uv__report_error(const uv_loop_t* loop, const char* funcName) {
+  char msg[UV_ERR_MSG_LENGTH] = {0};
+  snprintf(msg, UV_ERR_MSG_LENGTH, "multi-check occurred in function %s", funcName);
+  UV_LOGF("%{public}s", msg);
+  enum uv_error_level err_level = uv__get_error_level(loop);
+  switch (err_level) {
+    case UV_ERROR_LEVEL_DISABLED:
+      break;
+    case UV_ERROR_LEVEL_WARN_ONCE:
+      uv_print_call_stack(funcName);
+      uv__set_error_level(loop, UV_ERROR_LEVEL_DISABLED);
+      break;
+    case UV_ERROR_LEVEL_WARN_ALWAYS:
+      uv_print_call_stack(funcName);
+      break;
+    case UV_ERROR_LEVEL_FATAL:
+      abort();
+    default:
+      break;
+  }
+}
+
+
+enum uv_error_level uv__get_error_level(uv_loop_t* loop) {
+  uv__loop_internal_fields_t* lfields_error_level = uv__get_internal_fields(loop);
+  enum uv_error_level error_level = atomic_load((_Atomic int*)&lfields_error_level->error_level);
+  return error_level;
+}
+
+
+static uv_once_t error_report_guard = UV_ONCE_INIT;
 void init_param_once() {
-  int param_value = GetIntParameter("persist.libuv.properties", -1);
-  if (param_value == 1) {
-    g_multi_thread_check = 1;
+  int new_level = GetIntParameter("persist.libuv.properties", -1);
+  if (new_level < 0 || new_level > 3) {
+    new_level = 0;
   }
+  g_error_report_level = (enum uv_error_level)new_level;
 }
 
 
-int uv__is_multi_thread_open(void) {
-  uv_once(&thread_check_guard, init_param_once);
-  if (g_multi_thread_check == 0) {
-    return 0;
-  }
-#ifdef USE_FFRT
-  if (ffrt_get_cur_task() != NULL) {
-    return 0;
-  }
-#endif
-  return 1;
+void uv__set_error_level_by_param(uv_loop_t* loop) {
+  uv_once(&error_report_guard, init_param_once);
+  uv__set_error_level(loop, g_error_report_level);
 }
 
 
-void uv__init_thread_id(uv_loop_t* loop) {
-  if (uv__is_multi_thread_open()) {
-    uv__loop_internal_fields_t* lfields_tid = uv__get_internal_fields(loop);
-    lfields_tid->thread_id = 0;
+void uv__set_error_level(uv_loop_t* loop, enum uv_error_level new_level) {
+  if (new_level < 0 || new_level > 3) {
+    new_level = 0;
   }
-}
-
-
-void uv__set_thread_id(uv_loop_t* loop) {
-  if (uv__is_multi_thread_open()) {
-    uv__loop_internal_fields_t* lfields_tid = uv__get_internal_fields(loop);
-    lfields_tid->thread_id = (unsigned int)gettid();
-  }
-}
-
-
-static unsigned int uv__get_thread_id(const uv_loop_t* loop) {
-  if (uv__is_multi_thread_open()) {
-    uv__loop_internal_fields_t* lfields_tid = uv__get_internal_fields(loop);
-    return lfields_tid->thread_id;
-  } else {
-    return 0;
-  }
+  uv__loop_internal_fields_t* lfields_error_level = uv__get_internal_fields(loop);
+  atomic_exchange((_Atomic int*)&lfields_error_level->error_level, (enum uv_error_level)new_level);
 }
 
 
 void uv__multi_thread_check_unify(const uv_loop_t* loop, const char* funcName) {
-  if (!uv__is_multi_thread_open()) {
+#ifdef USE_FFRT
+  if (ffrt_get_cur_task() != NULL) {
     return;
   }
-
+#endif
+  uv__loop_internal_fields_t* lfields_tid = uv__get_internal_fields(loop);
   unsigned int thread_id = uv__get_thread_id(loop);
   if (thread_id == 0) {
     return;
   }
   if (thread_id != (unsigned int)gettid()) {
-    UV_LOGF("multi-thread occurred in function %{public}s!", funcName);
-    abort();
+    uv__report_error(loop, funcName);
   }
 }
 #endif

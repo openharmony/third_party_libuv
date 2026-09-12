@@ -52,6 +52,24 @@
 extern int snprintf(char*, size_t, const char*, ...);
 #endif
 
+#if defined(USE_OHOS_DFX)
+#define UV_SYSEVENT_DOMAIN "LIBUV"
+#define UV_SYSEVENT_NAME "UV_UNSAFE_EVENT"
+#define UV_SYSEVENT_PARAM "BUNDLE_NAME"
+#define UV_ERR_MSG_LENGTH 64
+
+enum uv_error_level {
+  // No errors
+  UV_ERROR_LEVEL_DISABLED = 0,
+  // Warn once(ish) on error, and then downgrade to UV_ERROR_LEVEL_DISABLED
+  UV_ERROR_LEVEL_WARN_ONCE,
+  // Warn always on error
+  UV_ERROR_LEVEL_WARN_ALWAYS,
+  // Abort on error
+  UV_ERROR_LEVEL_FATAL,
+}
+#endif
+
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #define ARRAY_END(a)  ((a) + ARRAY_SIZE(a))
 
@@ -531,12 +549,11 @@ int uv__copy_taskname(uv_req_t* req, const char* task_name);
 #endif
 
 #if defined(USE_OHOS_DFX)
-#define UV_SYSEVENT_DOMAIN "LIBUV"
-#define UV_SYSEVENT_NAME "UV_UNSAFE_EVENT"
-#define UV_SYSEVENT_PARAM "BUNDLE_NAME"
-int uv__is_multi_thread_open(void);
-void uv__init_thread_id(uv_loop_t* loop);
-void uv__set_thread_id(uv_loop_t* loop);
+enum uv_error_level uv__get_error_level(uv_loop_t* loop);
+void uv__set_error_level_by_param(uv_loop_t* loop);
+void uv__set_error_level(uv_loop_t* loop, enum uv_error_level);
+void uv_print_call_stack(const char* msg);
+void uv__report_error(uv_loop_t* loop, const char* funcName);
 void uv__multi_thread_check_unify(const uv_loop_t* loop, const char* funcName);
 #endif
 

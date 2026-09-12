@@ -61,7 +61,10 @@ static int timer_less_than(const struct heap_node* ha,
 
 int uv_timer_init(uv_loop_t* loop, uv_timer_t* handle) {
 #if defined(USE_OHOS_DFX)
-  uv__multi_thread_check_unify(loop, __func__);
+  enum uv_error_level err_level = uv__get_error_level(loop);
+  if (err_level == UV_ERROR_LEVEL_FATAL) {
+    uv__multi_thread_check_unify(loop, __func__);
+  }
 #endif
   uv__handle_init(loop, (uv_handle_t*)handle, UV_TIMER);
   handle->timer_cb = NULL;
@@ -80,7 +83,10 @@ int uv_timer_start(uv_timer_t* handle,
                    uint64_t repeat) {
   uint64_t clamped_timeout;
 #if defined(USE_OHOS_DFX)
-  uv__multi_thread_check_unify(handle->loop, __func__);
+  enum uv_error_level err_level = uv__get_error_level(handle->loop);
+  if (err_level == UV_ERROR_LEVEL_FATAL) {
+    uv__multi_thread_check_unify(handle->loop, __func__);
+  }
 #endif
 
   if (uv__is_closing(handle) || cb == NULL)
@@ -120,7 +126,10 @@ int uv_timer_start(uv_timer_t* handle,
 
 int uv_timer_stop(uv_timer_t* handle) {
 #if defined(USE_OHOS_DFX)
-  uv__multi_thread_check_unify(handle->loop, __func__);
+  enum uv_error_level err_level = uv__get_error_level(handle->loop);
+  if (err_level == UV_ERROR_LEVEL_FATAL) {
+    uv__multi_thread_check_unify(handle->loop, __func__);
+  }
 #endif
   if (!uv__is_active(handle))
     return 0;

@@ -312,6 +312,7 @@ if (defined(ohos_lite)) {
           "hilog:libhilog",
           "hitrace:hitrace_meter",
           "init:libbegetutil",
+          "faultloggerd:libbacktrace_local",
         ]
       }
 
@@ -384,7 +385,7 @@ if (defined(ohos_lite)) {
     part_name = "libuv"
     if (is_ohos) {
       output_extension = "so"
-      external_deps = [ "hilog:libhilog" ]
+      external_deps = [ "hilog:libhilog", "faultloggerd:libbacktrace_local" ]
       if (is_clang && target_cpu == "arm64" && defined(build_ext_path)) {
         ldflags = [ 
           "-Wl,--emit-relocs",
