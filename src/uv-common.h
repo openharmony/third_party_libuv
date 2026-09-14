@@ -67,7 +67,7 @@ enum uv_error_level {
   UV_ERROR_LEVEL_WARN_ALWAYS,
   // Abort on error
   UV_ERROR_LEVEL_FATAL,
-}
+};
 #endif
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
