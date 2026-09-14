@@ -1130,7 +1130,7 @@ void uv_print_call_stack(const char* msg) {
 }
 
 
-void uv__report_error(const uv_loop_t* loop, const char* funcName) {
+void uv__report_error(uv_loop_t* loop, const char* funcName) {
   char msg[UV_ERR_MSG_LENGTH] = {0};
   snprintf(msg, UV_ERR_MSG_LENGTH, "multi-check occurred in function %s", funcName);
   UV_LOGF("%{public}s", msg);
@@ -1185,7 +1185,7 @@ void uv__set_error_level(uv_loop_t* loop, enum uv_error_level new_level) {
 }
 
 
-void uv__multi_thread_check_unify(const uv_loop_t* loop, const char* funcName) {
+void uv__multi_thread_check_unify(uv_loop_t* loop, const char* funcName) {
 #ifdef USE_FFRT
   if (ffrt_get_cur_task() != NULL) {
     return;
