@@ -554,8 +554,8 @@ enum uv_error_level uv__get_error_level(uv_loop_t* loop);
 void uv__set_error_level_by_param(uv_loop_t* loop);
 void uv__set_error_level(uv_loop_t* loop, enum uv_error_level);
 void uv_print_call_stack(const char* msg);
-void uv__report_error(const uv_loop_t* loop, const char* funcName);
-void uv__multi_thread_check_unify(const uv_loop_t* loop, const char* funcName);
+void uv__report_error(uv_loop_t* loop, const char* funcName);
+void uv__multi_thread_check_unify(uv_loop_t* loop, const char* funcName);
 #endif
 
 typedef enum {
