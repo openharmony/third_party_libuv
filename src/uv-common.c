@@ -43,8 +43,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <info/fatal_message.h>
-#define __NR_rt_tgsigqueueinfo 240
-static enum uv_error_level g_error_report_level = UV_ERROR_LEVEL_WARN_ALWAYS;
+static enum uv_error_level g_error_report_level = UV_ERROR_LEVEL_WARN_ONCE;
 #endif
 
 #ifdef USE_FFRT
