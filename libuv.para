@@ -11,4 +11,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-persist.libuv.properties=0
+persist.libuv.properties=1

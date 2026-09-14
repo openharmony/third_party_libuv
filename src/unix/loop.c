@@ -70,20 +70,19 @@ int uv_loop_init(uv_loop_t* loop) {
 
   loop->active_handles = 0;
 #if defined(USE_OHOS_DFX)
-  uv__init_thread_id(loop);
-  uv__loop_internal_fields_t* lfields_sysevent = uv__get_internal_fields(loop);
-  lfields_sysevent->sysevent_mask = 0;
-  lfields_sysevent->scope_data.napi_env = NULL;
-  lfields_sysevent->scope_data.open_handle_func = NULL;
-  lfields_sysevent->scope_data.close_handle_func = NULL;
+  lfields->thread_id = 0;
+  lfields->sysevent_mask = 0;
+  lfields->scope_data.napi_env = NULL;
+  lfields->scope_data.open_handle_func = NULL;
+  lfields->scope_data.close_handle_func = NULL;
+  uv__set_error_level_by_param(loop);
 #endif
-  uv__loop_internal_fields_t* lfields_flag = uv__get_internal_fields(loop);
-  lfields_flag->register_flag = 0;
+  lfields->register_flag = 0;
 #ifdef SUPPORT_INTERRUPT
-  lfields_flag->uv_params = 0;
-  lfields_flag->uv_interrupt_task_type = -1;
-  lfields_flag->last_check_stamp = INT64_MAX;
-  lfields_flag->check_pending_higher_event = NULL;
+  lfields->uv_params = 0;
+  lfields->uv_interrupt_task_type = -1;
+  lfields->last_check_stamp = INT64_MAX;
+  lfields->check_pending_higher_event = NULL;
 #endif
   loop->active_reqs.count = 0;
   loop->nfds = 0;
