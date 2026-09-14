@@ -496,6 +496,7 @@ struct uv__loop_internal_fields_s {
 #endif
 #if defined(USE_OHOS_DFX)
   unsigned int thread_id;
+  enum uv_error_level error_level;
   unsigned int sysevent_mask;
   uv__scope_t scope_data;
 #endif
@@ -553,7 +554,7 @@ enum uv_error_level uv__get_error_level(uv_loop_t* loop);
 void uv__set_error_level_by_param(uv_loop_t* loop);
 void uv__set_error_level(uv_loop_t* loop, enum uv_error_level);
 void uv_print_call_stack(const char* msg);
-void uv__report_error(uv_loop_t* loop, const char* funcName);
+void uv__report_error(const uv_loop_t* loop, const char* funcName);
 void uv__multi_thread_check_unify(const uv_loop_t* loop, const char* funcName);
 #endif
 

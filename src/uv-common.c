@@ -1193,7 +1193,7 @@ void uv__multi_thread_check_unify(const uv_loop_t* loop, const char* funcName) {
   }
 #endif
   uv__loop_internal_fields_t* lfields_tid = uv__get_internal_fields(loop);
-  unsigned int thread_id = uv__get_thread_id(loop);
+  unsigned int thread_id = lfields_tid->thread_id;
   if (thread_id == 0) {
     return;
   }
