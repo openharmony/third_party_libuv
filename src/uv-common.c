@@ -1120,35 +1120,6 @@ int uv__copy_taskname(uv_req_t* req, const char* task_name) {
 
 
 #if defined(USE_OHOS_DFX)
-void uv__save_debug_message(const char* msg)
-{
-  if(msg == NULL) {
-    UV_LOGW("debug msg is NULL");
-    return;
-  }
-
-  const int NUMBER_ONE_THOUSAND = 1000; // 1000: second to millisecond convert ratio
-  const int NUMBER_ONE_MILLION = 1000000; // 1000000: nanosecond to millisecond convert ratio
-  struct timespec ts;
-  (void)clock_gettime(CLOCK_REALTIME, &ts);
-
-  debug_msg_t debug_message = {0, NULL};
-  debug_message.timestamp = ((uint64_t)ts.tv_sec *  NUMBER_ONE_THOUSAND) + 
-    (((uint64_t)ts.tv_sec) / NUMBER_ONE_MILLION);
-  debug_message.msg = msg;
-
-  const int signo = 42; // Custom stack capture signal and leak reuse
-  const int si_code = 1; // When si_signo = 42, use si_code = 1 mark the event as fdsan
-  siginfo_t info;
-  info.si_signo = signo;
-  info.si_code = si_code;
-  info.si_value.sival_ptr = &debug_message;
-  if (syscall(__NR_rt_tgsigqueueinfo, getpid(), gettid(), signo, &info) == -1) {
-    UV_LOGE("send failed errno=%{public}d", errno);
-  }
-}
-
-
 extern const char* GetTrace(size_t skipFrameNum, size_t maxFrameNums);
 void uv_print_call_stack(const char* msg) {
   if (msg == NULL) {
@@ -1156,7 +1127,7 @@ void uv_print_call_stack(const char* msg) {
     return;
   }
   char* stack = GetTrace(0, 256);
-  UV_LOGI("msg:%{public}s, Backtrace:\n%{public}s", msg, stack);
+  UV_LOGE("msg:%{public}s, Backtrace:\n%{public}s", msg, stack);
 }
 
 
